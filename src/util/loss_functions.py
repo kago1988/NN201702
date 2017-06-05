@@ -60,6 +60,10 @@ class MeanSquaredError(Error):
 
     def calculateError(self, target, output):
         # MSE = 1/n*sum (i=1 to n) of (target_i - output_i)^2)
+        # muss zuerst target und output zu Array von Numpy wechseln!!
+        # hier die Type von target und output sind Array von Numpy!!
+        output_errors = np.average((target - output)**2)
+        return output_errors
         pass
 
 
@@ -73,7 +77,10 @@ class SumSquaredError(Error):
 
     def calculateError(self, target, output):
         # SSE = 1/2*sum (i=1 to n) of (target_i - output_i)^2)
+        # die Type von target und output sind Array aus Numpy!!!
         pass
+        squares = (output - target)**2
+        return 1/2 *  numpy.sum(squares)
 
 
 class BinaryCrossEntropyError(Error):

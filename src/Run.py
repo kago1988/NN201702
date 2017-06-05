@@ -18,37 +18,49 @@ def main():
                                         data.testSet,
                                         learningRate=0.005,
                                         epochs=30)
+    myLogisticRegressionClassifier = LogisticRegression(data.trainingSet,
+                                                        data.validationSet,
+                                                        data.testSet,
+                                                        learningRate=0.01,
+                                                        epochs=50)
 
     # Train the classifiers
     print("=========================")
     print("Training..")
 
-    print("\nStupid Classifier has been training..")
-    myStupidClassifier.train()
+    #print("\nStupid Classifier has been training..")
+    #myStupidClassifier.train()
+    #print("Done..")
+
+    #print("\nPerceptron has been training..")
+    #myPerceptronClassifier.train()
+    #print("Done..")
+
+    print("\nLogistic Regression Classifier has been training..")
+    myLogisticRegressionClassifier.train()
     print("Done..")
 
-    print("\nPerceptron has been training..")
-    myPerceptronClassifier.train()
-    print("Done..")
-
-    
     # Do the recognizer
     # Explicitly specify the test set to be evaluated
-    stupidPred = myStupidClassifier.evaluate()
-    perceptronPred = myPerceptronClassifier.evaluate()
+    #stupidPred = myStupidClassifier.evaluate()
+    #perceptronPred = myPerceptronClassifier.evaluate()
+    LogisticRegressionPred = myLogisticRegressionClassifier.evaluate()
 
     # Report the result
     print("=========================")
     evaluator = Evaluator()
 
-    print("Result of the stupid recognizer:")
+    #print("Result of the stupid recognizer:")
     # evaluator.printComparison(data.testSet, stupidPred)
-    evaluator.printAccuracy(data.testSet, stupidPred)
+    #evaluator.printAccuracy(data.testSet, stupidPred)
 
-    print("\nResult of the Perceptron recognizer:")
+    #print("\nResult of the Perceptron recognizer:")
     # evaluator.printComparison(data.testSet, perceptronPred)
-    evaluator.printAccuracy(data.testSet, perceptronPred)
-    
-    
+    #evaluator.printAccuracy(data.testSet, perceptronPred)
+
+    print("Result of the Logistic Regression:")
+    evaluator.printAccuracy(data.testSet, LogisticRegressionPred)
+
+
 if __name__ == '__main__':
     main()
