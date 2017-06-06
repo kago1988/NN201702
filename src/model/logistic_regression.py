@@ -68,16 +68,28 @@ class LogisticRegression(Classifier):
 
         #Train for some epochs if the error is not 0
         while not learned:
-            totalError = 0
             hypothesis = np.array(list(map(self.classify,
                                            self.trainingSet.input)))
+            d = np.array(list(map(self.fire,
+                              self.trainingSet.input)))
             totalError = loss.calculateError(np.array(self.trainingSet.label),
                                         hypothesis)
+            n_X = len(hypothesis)
             #print("Error now is: %f", totalError)
             if totalError != 0:
-                error = np.array(self.trainingSet.label) - hypothesis
-                grad = 2*(np.dot(error, self.trainingSet.input))/len(hypothesis)
-                self.updateWeights(grad)
+                # E(w) = 1/|X| * sigma_{x in X} (y(wx) - d)^2
+                # where y(wx) = sigmoid(wx)
+                # dE/dy = 1/|X| * sigma_{x in X} 2(y(wx) - d)
+                dE_dy = (2.0 / n_X) * \
+                        (np.array(self.trainingSet.label) - d)
+                # now we need:
+                # dE/dx = 1/|X| * sigma_{x in X} 2(y(wx) - d) * y'
+                # wobei y'(wx) = y(wx) * (1-y(wx)) =: sigmoid_prime(wx)
+                sigmoid_gradient_contributions = map(Activation.sigmoidPrime,
+                                                     d)
+                dE_dx = [a * b for a, b in
+                         zip(dE_dy, sigmoid_gradient_contributions)]
+                self.updateWeights(dE_dx)
 
             iteration += 1
 
@@ -104,7 +116,6 @@ class LogisticRegression(Classifier):
         bool :
             True if the testInstance is recognized as a 7, False otherwise.
         """
-        pass
         return self.fire(testInstance) >= 0.5
 
     def evaluate(self, test=None):
@@ -126,9 +137,11 @@ class LogisticRegression(Classifier):
         # set.
         return list(map(self.classify, test))
 
-    def updateWeights(self, grad):
-        pass
-        self.weight += self.learningRate*grad
+    def updateWeights(self, dE_dx):
+        weight_gradient_contributions = np.array([a * b for a, b in
+                                                 zip(dE_dx, self.trainingSet.input)])
+        total_gradient = np.sum(weight_gradient_contributions)
+        self.weight += self.learningRate * total_gradient
 
     def fire(self, input):
         # Look at how we change the activation function here!!!!
