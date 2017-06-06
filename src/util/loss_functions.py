@@ -64,7 +64,6 @@ class MeanSquaredError(Error):
         # hier die Type von target und output sind Array von Numpy!!
         output_errors = np.average((target - output)**2)
         return output_errors
-        pass
 
 
 class SumSquaredError(Error):
@@ -80,7 +79,7 @@ class SumSquaredError(Error):
         # die Type von target und output sind Array aus Numpy!!!
         pass
         squares = (output - target)**2
-        return 1/2 *  numpy.sum(squares)
+        return 1/2 *  np.sum(squares)
 
 
 class BinaryCrossEntropyError(Error):

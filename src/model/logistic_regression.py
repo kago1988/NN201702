@@ -16,7 +16,7 @@ logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s',
 
 
 class LogisticRegression(Classifier):
-    """
+    """/home/kaze/Desktop/A_NN/NN_Praktikum_repos/NN201702
     A digit-7 recognizer based on logistic regression algorithm
 
     Parameters
@@ -62,7 +62,9 @@ class LogisticRegression(Classifier):
         learned = False
         iteration = 0
         accuracy = []
+        error_progresion = []
         pl.ion()
+        legend_exists = False
 
         #Train for some epochs if the error is not 0
         while not learned:
@@ -84,12 +86,29 @@ class LogisticRegression(Classifier):
             if totalError == 0 or iteration >= self.epochs:
                 learned = True
             accuracy.append(accuracy_score(self.trainingSet.label, hypothesis))
+            error_progresion.append(totalError)
             x = range(iteration)
             pl.xlabel(u"Epochs")
-            pl.ylabel(u"Accuracy")
             pl.xlim(0, self.epochs)
             pl.ylim(0, 1.0)
-            pl.plot(x, accuracy, 'k')
+            pl.plot(x, accuracy, 'k', label='accuracy')
+            pl.plot(x, error_progresion, 'r', label='mean sqared \nerror')
+            if not legend_exists:
+                # Now add the legend with some customizations.
+                legend = pl.legend(bbox_to_anchor=(1.5, 1.0))
+
+                # The frame is matplotlib.patches.Rectangle instance surrounding the legend.
+                frame = legend.get_frame()
+                frame.set_facecolor('0.90')
+
+                # Set the fontsize
+                for label in legend.get_texts():
+                    label.set_fontsize('large')
+
+                for label in legend.get_lines():
+                    label.set_linewidth(1.5)  # the legend line width
+                legend_exists = True
+                pl.subplots_adjust(left=0.1, right=0.7, top=0.9, bottom=0.1)
             pl.show()
             pl.pause(0.01)
 
