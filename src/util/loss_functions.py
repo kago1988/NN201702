@@ -25,6 +25,11 @@ class Error:
         # calculate the error between target and output
         pass
 
+    @abstractproperty
+    def calculateErrorPrime(self, target, output):
+        # error function derivative with respect to neuron output
+        pass
+
 
 class AbsoluteError(Error):
     """
@@ -36,6 +41,10 @@ class AbsoluteError(Error):
     def calculateError(self, target, output):
         # It is the numbers of differences between target and output
         return abs(target - output)
+
+    def calculateErrorPrime(self, target, output):
+        # error function derivative with respect to neuron output
+        pass
 
 
 class DifferentError(Error):
@@ -49,6 +58,9 @@ class DifferentError(Error):
         # It is the numbers of differences between target and output
         return target - output
 
+    def calculateErrorPrime(self, target, output):
+        # error function derivative with respect to neuron output
+        return -output
 
 class MeanSquaredError(Error):
     """
@@ -65,6 +77,9 @@ class MeanSquaredError(Error):
         output_errors = np.average((target - output)**2)
         return output_errors
 
+    def calculateErrorPrime(self, target, output):
+        return np.array(target) - output
+
 
 class SumSquaredError(Error):
     """
@@ -77,10 +92,11 @@ class SumSquaredError(Error):
     def calculateError(self, target, output):
         # SSE = 1/2*sum (i=1 to n) of (target_i - output_i)^2)
         # die Type von target und output sind Array aus Numpy!!!
-        pass
         squares = (output - target)**2
         return 1/2 *  np.sum(squares)
 
+    def calculateErrorPrime(self, target, output):
+        return (2.0 / len(output)) * (np.array(target) - output)
 
 class BinaryCrossEntropyError(Error):
     """
@@ -93,6 +109,9 @@ class BinaryCrossEntropyError(Error):
     def calculateError(self, target, output):
         pass
 
+    def calculateErrorPrime(self, target, output):
+        # error function derivative with respect to neuron output
+        pass
 
 class CrossEntropyError(Error):
     """
@@ -103,4 +122,8 @@ class CrossEntropyError(Error):
         self.errorString = 'crossentropy'
 
     def calculateError(self, target, output):
+        pass
+
+    def calculateErrorPrime(self, target, output):
+        # error function derivative with respect to neuron output
         pass

@@ -6,6 +6,8 @@ import logging
 
 import numpy as np
 
+import util.loss_functions as erf
+
 from util.activation_functions import Activation
 from model.classifier import Classifier
 from sklearn.metrics import accuracy_score
@@ -37,7 +39,10 @@ class LogisticRegression(Classifier):
     epochs : positive int
     """
 
-    def __init__(self, train, valid, test, learningRate=0.01, epochs=50):
+    def __init__(self, train, valid, test,
+                 learningRate=0.01, epochs=50,
+                 activation='sigmoid',
+                 error='mse'):
 
         self.learningRate = learningRate
         self.epochs = epochs
@@ -49,6 +54,28 @@ class LogisticRegression(Classifier):
         # Initialize the weight vector with small values
         self.weight = 0.01*np.random.randn(self.trainingSet.input.shape[1])
 
+        self.activation = Activation.getActivation(activation)
+        self.activationPrime = Activation.getDerivative(activation)
+        self.activationString = activation[0].upper() + activation[1:]
+
+        self.erString = error
+
+        if error == 'absolute':
+            self.erf = erf.AbsoluteError()
+        elif error == 'different':
+            self.erf = erf.DifferentError()
+        elif error == 'mse':
+            self.erf = erf.MeanSquaredError()
+        elif error == 'sse':
+            self.erf = erf.SumSquaredError()
+        elif error == 'bce':
+            self.erf = erf.BinaryCrossEntropyError()
+        elif error == 'crossentropy':
+            self.erf = erf.CrossEntropyError()
+        else:
+            raise ValueError('Cannot instantiate the requested '
+                             'error function: ' + error + 'not available')
+
     def train(self, verbose=True):
         """Train the Logistic Regression.
 
@@ -58,7 +85,6 @@ class LogisticRegression(Classifier):
             Print logging messages with validation accuracy if verbose is True.
         """
         from util.loss_functions import MeanSquaredError
-        loss = MeanSquaredError()
         learned = False
         iteration = 0
         accuracy = []
@@ -72,24 +98,25 @@ class LogisticRegression(Classifier):
                                            self.trainingSet.input)))
             d = np.array(list(map(self.fire,
                               self.trainingSet.input)))
-            totalError = loss.calculateError(np.array(self.trainingSet.label),
-                                        hypothesis)
+            totalError = self.erf.calculateError(np.array(self.trainingSet.label),
+                                                 hypothesis)
             n_X = len(hypothesis)
             #print("Error now is: %f", totalError)
             if totalError != 0:
                 # E(w) = 1/|X| * sigma_{x in X} (y(wx) - d)^2
                 # where y(wx) = sigmoid(wx)
                 # dE/dy = 1/|X| * sigma_{x in X} 2(y(wx) - d)
-                dE_dy = (2.0 / n_X) * \
-                        (np.array(self.trainingSet.label) - d)
+                dE_dy = self.erf.calculateErrorPrime(
+                    np.array(self.trainingSet.label), d)
                 # now we need:
                 # dE/dx = 1/|X| * sigma_{x in X} 2(y(wx) - d) * y'
                 # wobei y'(wx) = y(wx) * (1-y(wx)) =: sigmoid_prime(wx)
-                sigmoid_gradient_contributions = map(Activation.sigmoidPrime,
-                                                     d)
+                sigmoid_gradient_contributions = map(self.activationPrime, d)
                 dE_dx = [a * b for a, b in
                          zip(dE_dy, sigmoid_gradient_contributions)]
-                self.updateWeights(dE_dx)
+                weight_gradient_contributions = np.array([a * b for a, b in
+                                                          zip(dE_dx, self.trainingSet.input)])
+                self.updateWeights(weight_gradient_contributions)
 
             iteration += 1
 
@@ -137,16 +164,14 @@ class LogisticRegression(Classifier):
         # set.
         return list(map(self.classify, test))
 
-    def updateWeights(self, dE_dx):
-        weight_gradient_contributions = np.array([a * b for a, b in
-                                                 zip(dE_dx, self.trainingSet.input)])
-        total_gradient = np.sum(weight_gradient_contributions)
+    def updateWeights(self, dE_dw):
+        total_gradient = np.sum(dE_dw)
         self.weight += self.learningRate * total_gradient
 
     def fire(self, input):
         # Look at how we change the activation function here!!!!
         # Not Activation.sign as in the perceptron, but sigmoid
-        return Activation.sigmoid(np.dot(np.array(input), self.weight))
+        return self.activation(np.dot(np.array(input), self.weight))
 
     def _initialize_plot(self):
         pl.ion()
