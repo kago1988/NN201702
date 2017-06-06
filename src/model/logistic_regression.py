@@ -53,7 +53,7 @@ class LogisticRegression(Classifier):
 
         # Initialize the weight vector with small values between -3 and 3
         # coresponding to the accelerated learning area for the sigmoid function
-        self.weight = np.random.randn(self.trainingSet.input.shape[1])
+        self.weight = np.random.rand(self.trainingSet.input.shape[1]) * 6 - 3
 
         self.activation = Activation.getActivation(activation)
         self.activationPrime = Activation.getDerivative(activation)
@@ -97,27 +97,44 @@ class LogisticRegression(Classifier):
         while not learned:
             hypothesis = np.array(list(map(self.classify,
                                            self.trainingSet.input)))
-            d = np.array(list(map(self.fire,
+            net_output = np.array(list(map(self.fire,
                               self.trainingSet.input)))
             totalError = self.erf.calculateError(np.array(self.trainingSet.label),
                                                  hypothesis)
 
             #print("Error now is: %f", totalError)
             if totalError != 0:
-                grad = self._get_gradient(d)
+                grad = self._get_gradient(net_output)
                 self.updateWeights(grad)
 
             iteration += 1
 
             if verbose:
                 logging.info("Epoch: %i; Error: %f", iteration, totalError)
-            if totalError < 0.1 or iteration >= self.epochs:
+            if totalError == 0 or iteration >= self.epochs:
                 learned = True
             accuracy.append(accuracy_score(self.trainingSet.label, hypothesis))
             error_progresion.append(totalError)
             legend_exists= self._update_plot(iteration,
                               accuracy, error_progresion,
                               legend_exists)
+
+    def _get_gradient(self, y):
+        d = np.array(self.trainingSet.label)
+        # E(w) = 1/|X| * sigma_{x in X} (y(wx) - d)^2
+        # where y(wx) = sigmoid(wx)
+        # dE/dy = 1/|X| * sigma_{x in X} 2(y(wx) - d)
+        dE_dy = self.erf.calculateErrorPrime(d, np.array(y))
+        # now we need:
+        # dE/dx = 1/|X| * sigma_{x in X} 2(y(wx) - d) * y'
+        # wobei y'(wx) = y(wx) * (1-y(wx)) =: sigmoid_prime(wx)
+        sigmoid_gradient_contributions = map(self.activationPrime, y)
+        dE_dx = [a * b for a, b in
+                 zip(dE_dy, sigmoid_gradient_contributions)]
+        weight_gradient_contributions = np.array([a * b for a, b in
+                                                  zip(dE_dx, self.trainingSet.input)])
+        return weight_gradient_contributions
+
 
 
     def classify(self, testInstance):
@@ -161,22 +178,6 @@ class LogisticRegression(Classifier):
         # Look at how we change the activation function here!!!!
         # Not Activation.sign as in the perceptron, but sigmoid
         return self.activation(np.dot(np.array(input), self.weight))
-
-    def _get_gradient(self, desired_output):
-        # E(w) = 1/|X| * sigma_{x in X} (y(wx) - d)^2
-        # where y(wx) = sigmoid(wx)
-        # dE/dy = 1/|X| * sigma_{x in X} 2(y(wx) - d)
-        dE_dy = self.erf.calculateErrorPrime(
-            np.array(self.trainingSet.label), np.array(desired_output))
-        # now we need:
-        # dE/dx = 1/|X| * sigma_{x in X} 2(y(wx) - d) * y'
-        # wobei y'(wx) = y(wx) * (1-y(wx)) =: sigmoid_prime(wx)
-        sigmoid_gradient_contributions = map(self.activationPrime, desired_output)
-        dE_dx = [a * b for a, b in
-                 zip(dE_dy, sigmoid_gradient_contributions)]
-        weight_gradient_contributions = np.array([a * b for a, b in
-                                                  zip(dE_dx, self.trainingSet.input)])
-        return weight_gradient_contributions
 
     def _initialize_plot(self):
         pl.ion()

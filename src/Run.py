@@ -22,7 +22,7 @@ def main():
                                                         data.validationSet,
                                                         data.testSet,
                                                         learningRate=0.005,
-                                                        epochs=1000,
+                                                        epochs=200,
                                                         error='sse')
 
     # Train the classifiers
