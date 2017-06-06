@@ -51,8 +51,9 @@ class LogisticRegression(Classifier):
         self.validationSet = valid
         self.testSet = test
 
-        # Initialize the weight vector with small values
-        self.weight = 0.01*np.random.randn(self.trainingSet.input.shape[1])
+        # Initialize the weight vector with small values between -3 and 3
+        # coresponding to the accelerated learning area for the sigmoid function
+        self.weight = np.random.randn(self.trainingSet.input.shape[1])
 
         self.activation = Activation.getActivation(activation)
         self.activationPrime = Activation.getDerivative(activation)
@@ -100,29 +101,17 @@ class LogisticRegression(Classifier):
                               self.trainingSet.input)))
             totalError = self.erf.calculateError(np.array(self.trainingSet.label),
                                                  hypothesis)
-            n_X = len(hypothesis)
+
             #print("Error now is: %f", totalError)
             if totalError != 0:
-                # E(w) = 1/|X| * sigma_{x in X} (y(wx) - d)^2
-                # where y(wx) = sigmoid(wx)
-                # dE/dy = 1/|X| * sigma_{x in X} 2(y(wx) - d)
-                dE_dy = self.erf.calculateErrorPrime(
-                    np.array(self.trainingSet.label), d)
-                # now we need:
-                # dE/dx = 1/|X| * sigma_{x in X} 2(y(wx) - d) * y'
-                # wobei y'(wx) = y(wx) * (1-y(wx)) =: sigmoid_prime(wx)
-                sigmoid_gradient_contributions = map(self.activationPrime, d)
-                dE_dx = [a * b for a, b in
-                         zip(dE_dy, sigmoid_gradient_contributions)]
-                weight_gradient_contributions = np.array([a * b for a, b in
-                                                          zip(dE_dx, self.trainingSet.input)])
-                self.updateWeights(weight_gradient_contributions)
+                grad = self._get_gradient(d)
+                self.updateWeights(grad)
 
             iteration += 1
 
             if verbose:
                 logging.info("Epoch: %i; Error: %f", iteration, totalError)
-            if totalError == 0 or iteration >= self.epochs:
+            if totalError < 0.1 or iteration >= self.epochs:
                 learned = True
             accuracy.append(accuracy_score(self.trainingSet.label, hypothesis))
             error_progresion.append(totalError)
@@ -173,31 +162,42 @@ class LogisticRegression(Classifier):
         # Not Activation.sign as in the perceptron, but sigmoid
         return self.activation(np.dot(np.array(input), self.weight))
 
+    def _get_gradient(self, desired_output):
+        # E(w) = 1/|X| * sigma_{x in X} (y(wx) - d)^2
+        # where y(wx) = sigmoid(wx)
+        # dE/dy = 1/|X| * sigma_{x in X} 2(y(wx) - d)
+        dE_dy = self.erf.calculateErrorPrime(
+            np.array(self.trainingSet.label), np.array(desired_output))
+        # now we need:
+        # dE/dx = 1/|X| * sigma_{x in X} 2(y(wx) - d) * y'
+        # wobei y'(wx) = y(wx) * (1-y(wx)) =: sigmoid_prime(wx)
+        sigmoid_gradient_contributions = map(self.activationPrime, desired_output)
+        dE_dx = [a * b for a, b in
+                 zip(dE_dy, sigmoid_gradient_contributions)]
+        weight_gradient_contributions = np.array([a * b for a, b in
+                                                  zip(dE_dx, self.trainingSet.input)])
+        return weight_gradient_contributions
+
     def _initialize_plot(self):
         pl.ion()
 
     def _update_plot(self, iteration, accuracy, error_progresion, legend_exists):
         x = range(iteration)
         pl.xlabel(u"Epochs")
+        pl.figure(1)
+        sp1 = pl.subplot(211)
         pl.xlim(0, self.epochs)
         pl.ylim(0, 1.0)
         pl.plot(x, accuracy, 'g-', label='accuracy')
-        pl.plot(x, error_progresion, 'r-', label='mean sqared \nerror')
+
+        sp2 = pl.subplot(212)
+        pl.xlim(0, self.epochs)
+        pl.ylim(0, np.max(error_progresion))
+        pl.plot(x, error_progresion, 'r-', label=(self.erString + ' error'))
         if not legend_exists:
             # Now add the legend with some customizations.
-            legend = pl.legend(loc='upper right')
-
-            # The frame is matplotlib.patches.Rectangle instance surrounding the legend.
-            # frame = legend.get_frame()
-            # frame.set_facecolor('0.90')
-
-            # Set the fontsize
-            for label in legend.get_texts():
-                label.set_fontsize('large')
-
-            for label in legend.get_lines():
-                label.set_linewidth(1.5)  # the legend line width
-            pl.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
+            legend1 = sp1.legend(loc='upper right')
+            legend2 = sp2.legend(loc='upper right')
         pl.show()
         pl.pause(0.01)
         return True

@@ -40,11 +40,11 @@ class AbsoluteError(Error):
 
     def calculateError(self, target, output):
         # It is the numbers of differences between target and output
-        return abs(target - output)
+        return np.sum(np.abs(target - output))
 
     def calculateErrorPrime(self, target, output):
         # error function derivative with respect to neuron output
-        pass
+        return -output
 
 
 class DifferentError(Error):
@@ -93,7 +93,7 @@ class SumSquaredError(Error):
         # SSE = 1/2*sum (i=1 to n) of (target_i - output_i)^2)
         # die Type von target und output sind Array aus Numpy!!!
         squares = (output - target)**2
-        return 1/2 *  np.sum(squares)
+        return 0.5 *  np.sum(squares)
 
     def calculateErrorPrime(self, target, output):
         return (2.0 / len(output)) * (np.array(target) - output)
