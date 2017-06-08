@@ -66,6 +66,10 @@ class MeanSquaredError(Error):
         return output_errors
         pass
 
+    def calculatePrime(self, target, output):
+        diff = target - output
+        prime = 2*np.dot(diff, output)/output.shape[0]
+        return prime
 
 class SumSquaredError(Error):
     """
@@ -82,6 +86,9 @@ class SumSquaredError(Error):
         squares = (output - target)**2
         return 1/2 *  numpy.sum(squares)
 
+    def calculatePrime(self, target, output):
+        return np.dot((output - target), output)
+
 
 class BinaryCrossEntropyError(Error):
     """
@@ -92,6 +99,7 @@ class BinaryCrossEntropyError(Error):
         self.errorString = 'bce'
 
     def calculateError(self, target, output):
+
         pass
 
 

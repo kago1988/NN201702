@@ -4,10 +4,11 @@ import time
 import numpy as np
 
 from util.activation_functions import Activation
-from model.layer import Layer
+
+#from model.layer import Layer
 
 
-class LogisticLayer(Layer):
+class LogisticLayer:
     """
     A layer of perceptrons acting as the output layer
 
@@ -47,6 +48,7 @@ class LogisticLayer(Layer):
         # Notice the functional programming paradigms of Python + Numpy
         self.activationString = activation
         self.activation = Activation.getActivation(self.activationString)
+        self.activationPrime = Activation.getDerivative(self.activationString)
 
         self.nIn = nIn
         self.nOut = nOut
@@ -85,6 +87,12 @@ class LogisticLayer(Layer):
             a numpy array (1,nOut) containing the output of the layer
         """
         pass
+        self.output = []
+        self.input = np.append([1], np.array(input))
+        for i in range(0, self.nOut):
+            self.output.append(self.activation(np.dot(self.input,
+                                                      self.weights[i])))
+        return self.output
 
     def computeDerivative(self, nextDerivatives, nextWeights):
         """
@@ -96,16 +104,23 @@ class LogisticLayer(Layer):
             a numpy array containing the derivatives from next layer
         nextWeights : ndarray
             a numpy array containing the weights from next layer
-
+            OR a numpy matrix???????
         Returns
         -------
         ndarray :
             a numpy array containing the partial derivatives on this layer
         """
-        pass
+        for i in range(0, self.nOut):
+            dE_dy_i = np.dot(nextDerivatives, nextWeights[:, i+1])
+            dE_dx_i = dE_dy_i * self.activationPrime(self.output[i])
+            self.delta[i] = dE_dx_i
+        return self.delta
 
-    def updateWeights(self):
+    def updateWeights(self, val):
         """
         Update the weights of the layer
         """
         pass
+        #update weights actually always outside the layer class??
+        for i in range(0, self.nOut):
+            self.weights[i] += val[i]

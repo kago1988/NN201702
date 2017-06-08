@@ -5,9 +5,11 @@ import sys
 import logging
 
 import numpy as np
+import util.loss_functions as erf
 
 from util.activation_functions import Activation
 from model.classifier import Classifier
+from model.logistic_layer import LogisticLayer
 from sklearn.metrics import accuracy_score
 
 logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s',
@@ -37,7 +39,8 @@ class LogisticRegression(Classifier):
     epochs : positive int
     """
 
-    def __init__(self, train, valid, test, learningRate=0.01, epochs=50):
+    def __init__(self, train, valid, test, learningRate=0.01, epochs=50,
+                 activation = 'sigmoid', error = 'mse'):
 
         self.learningRate = learningRate
         self.epochs = epochs
@@ -48,6 +51,28 @@ class LogisticRegression(Classifier):
 
         # Initialize the weight vector with small values
         self.weight = 0.01*np.random.randn(self.trainingSet.input.shape[1])
+        weightPara = self.weight
+
+        # Choose the error function
+        self.errorString = error
+        self._initialize_error(error)
+
+        #initialize also the layer
+        self.layer = LogisticLayer(nIn = self.trainingSet.input.shape[1],
+                                   nOut = 1, activation = activation,
+                                   weights =np.append([1],
+                                                      np.array([self.weight])))
+
+    def _initialize_error(self, error):
+        if error == 'absolute':
+            self.erf = erf.AbsoluteError()
+        elif error == 'mse':
+            self.erf = erf.MeanSquaredError()
+        elif error == 'sse':
+            self.erf = erf.SumSquaredError()
+        else:
+            raise ValueError('Cannot instantiate the requested error function:' + error + 'not available')
+
 
     def train(self, verbose=True):
         """Train the Logistic Regression.
@@ -57,8 +82,8 @@ class LogisticRegression(Classifier):
         verbose : boolean
             Print logging messages with validation accuracy if verbose is True.
         """
-        from util.loss_functions import MeanSquaredError
-        loss = MeanSquaredError()
+        #from util.loss_functions import MeanSquaredError
+        #loss = MeanSquaredError()
         learned = False
         iteration = 0
         accuracy = []
@@ -67,15 +92,21 @@ class LogisticRegression(Classifier):
         #Train for some epochs if the error is not 0
         while not learned:
             totalError = 0
+            derivatives = []
             hypothesis = np.array(list(map(self.classify,
                                            self.trainingSet.input)))
-            totalError = loss.calculateError(np.array(self.trainingSet.label),
+            totalError = self.erf.calculateError(np.array(self.trainingSet.label),
                                         hypothesis)
             #print("Error now is: %f", totalError)
             if totalError != 0:
-                error = np.array(self.trainingSet.label) - hypothesis
-                grad = 2*(np.dot(error, self.trainingSet.input))/len(hypothesis)
-                self.updateWeights(grad)
+                output = []
+                for i in range(0, self.trainingSet.input.shape[0]):
+                    output.append(self.layer.forward(self.trainingSet.input[i]))
+                dE_dy =  self.erf.calculatePrime(np.array(self.trainingSet.label),output)
+                # for only one neuron set the weight as [0,1]
+                dE_dx = self.layer.computeDerivative([dE_dy], [0, 1])
+                dE_dw = dE_dx * self.trainingSet.input
+                self.updateWeights(derivatives)
 
             iteration += 1
 

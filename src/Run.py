@@ -21,8 +21,9 @@ def main():
     myLogisticRegressionClassifier = LogisticRegression(data.trainingSet,
                                                         data.validationSet,
                                                         data.testSet,
-                                                        learningRate=0.01,
-                                                        epochs=50)
+                                                        learningRate=0.001,
+                                                        epochs=50,
+                                                        error='mse')
 
     # Train the classifiers
     print("=========================")
