@@ -100,7 +100,7 @@ class LogisticRegression(Classifier):
         self._initialize_plot()
         legend_exists = False
 
-        #Train for some epochs if the error is not 0
+        old_score = 0  # for early stopping
         while not learned:
             derivatives = []    # contains the gradients for the training set
             d = np.array(self.trainingSet.label) # the desired output for the ts
@@ -121,13 +121,15 @@ class LogisticRegression(Classifier):
             # validation
             validation_output = np.array(list(map(self.classify,
                                                   self.validationSet.input)))
+            new_score = accuracy_score(self.validationSet.label, validation_output)
             accuracy.append(accuracy_score(self.validationSet.label,
                                            validation_output))
-
-            # stop condition
+            
+            # stop conditions
             iteration += 1
-            if totalError == 0 or iteration >= self.epochs:
+            if totalError == 0 or iteration >= self.epochs or old_score > new_score:
                 learned = True
+            old_score = new_score
 
             #logging
             if verbose:
@@ -146,6 +148,7 @@ class LogisticRegression(Classifier):
         # if toplayer, there are no weights after activation function
         # -> weights are all one
         dE_dx = self.layer.computeDerivative([dE_dy], np.ones(self.layer.nOut))
+
         dE_dw = dE_dx * input
         return dE_dw
 

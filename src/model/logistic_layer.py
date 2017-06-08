@@ -108,7 +108,6 @@ class LogisticLayer:
         ndarray :
             a numpy array containing the partial derivatives on this layer
         """
-        derivatives = []
         for i in range(0, self.nOut):
             # sum of derivatives of the knode's output contributions
             # a layer node gets contributions from every node in the layer above
