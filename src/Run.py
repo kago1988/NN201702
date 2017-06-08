@@ -18,12 +18,14 @@ def main():
                                         data.testSet,
                                         learningRate=0.005,
                                         epochs=30)
+    # use learningRate=0.00005 for sse if you wanna see some change,
+    # otherwise the batch methon learnes too fast (no change after the first step)
     myLogisticRegressionClassifier = LogisticRegression(data.trainingSet,
                                                         data.validationSet,
                                                         data.testSet,
-                                                        learningRate=0.005,
+                                                        learningRate=0.00005,
                                                         epochs=200,
-                                                        error='sse')
+                                                        error='mse')
 
     # Train the classifiers
     print("=========================")

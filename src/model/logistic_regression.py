@@ -10,6 +10,7 @@ import util.loss_functions as erf
 
 from util.activation_functions import Activation
 from model.classifier import Classifier
+from model.logistic_layer import LogisticLayer
 from sklearn.metrics import accuracy_score
 
 logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s',
@@ -53,14 +54,20 @@ class LogisticRegression(Classifier):
 
         # Initialize the weight vector with small values between -3 and 3
         # coresponding to the accelerated learning area for the sigmoid function
-        self.weight = np.random.rand(self.trainingSet.input.shape[1]) * 6 - 3
-
-        self.activation = Activation.getActivation(activation)
-        self.activationPrime = Activation.getDerivative(activation)
-        self.activationString = activation[0].upper() + activation[1:]
+        weight = np.random.rand(self.trainingSet.input.shape[1] + 1) * 6 - 3
 
         self.erString = error
+        self._initialize_error(error)
 
+        # if we want more than just one neuron per layer, add the separate
+        # neuron weights as a separate vector in the weights parameter
+        self.layer = LogisticLayer(nIn=self.trainingSet.input.shape[1],
+                                   nOut=1,
+                                   activation=activation,
+                                   weights=np.array([weight]))
+
+
+    def _initialize_error(self, error):
         if error == 'absolute':
             self.erf = erf.AbsoluteError()
         elif error == 'different':
@@ -77,6 +84,7 @@ class LogisticRegression(Classifier):
             raise ValueError('Cannot instantiate the requested '
                              'error function: ' + error + 'not available')
 
+
     def train(self, verbose=True):
         """Train the Logistic Regression.
 
@@ -85,7 +93,6 @@ class LogisticRegression(Classifier):
         verbose : boolean
             Print logging messages with validation accuracy if verbose is True.
         """
-        from util.loss_functions import MeanSquaredError
         learned = False
         iteration = 0
         accuracy = []
@@ -95,45 +102,52 @@ class LogisticRegression(Classifier):
 
         #Train for some epochs if the error is not 0
         while not learned:
-            hypothesis = np.array(list(map(self.classify,
-                                           self.trainingSet.input)))
-            net_output = np.array(list(map(self.fire,
-                              self.trainingSet.input)))
-            totalError = self.erf.calculateError(np.array(self.trainingSet.label),
-                                                 hypothesis)
+            derivatives = []    # contains the gradients for the training set
+            d = np.array(self.trainingSet.label) # the desired output for the ts
 
-            #print("Error now is: %f", totalError)
-            if totalError != 0:
-                grad = self._get_gradient(net_output)
-                self.updateWeights(grad)
+            # whenever we do a forward pass we also have to do a backw pass.
+            # we compute the error, do the update and cross_validate after the loop
+            for i in range(0, self.trainingSet.input.shape[0]):
+                dE_dw = self._get_gradient(d[i], self.trainingSet.input[i])
+                derivatives.append(dE_dw)
 
+            # compute error & update
+            output = list(map(self.classify, self.trainingSet.input))
+            totalError = self.erf.calculateError(d, output)
+            if totalError != 0:  # update weights if necessary
+                self.updateWeights(derivatives)
+            error_progresion.append(totalError)
+
+            # validation
+            validation_output = np.array(list(map(self.classify,
+                                                  self.validationSet.input)))
+            accuracy.append(accuracy_score(self.validationSet.label,
+                                           validation_output))
+
+            # stop condition
             iteration += 1
-
-            if verbose:
-                logging.info("Epoch: %i; Error: %f", iteration, totalError)
             if totalError == 0 or iteration >= self.epochs:
                 learned = True
-            accuracy.append(accuracy_score(self.trainingSet.label, hypothesis))
-            error_progresion.append(totalError)
+
+            #logging
+            if verbose:
+                logging.info("Epoch: %i; Error: %f", iteration, totalError)
+            # plots
             legend_exists= self._update_plot(iteration,
                               accuracy, error_progresion,
                               legend_exists)
 
-    def _get_gradient(self, y):
-        d = np.array(self.trainingSet.label)
-        # E(w) = 1/|X| * sigma_{x in X} (y(wx) - d)^2
-        # where y(wx) = sigmoid(wx)
-        # dE/dy = 1/|X| * sigma_{x in X} 2(y(wx) - d)
-        dE_dy = self.erf.calculateErrorPrime(d, np.array(y))
-        # now we need:
-        # dE/dx = 1/|X| * sigma_{x in X} 2(y(wx) - d) * y'
-        # wobei y'(wx) = y(wx) * (1-y(wx)) =: sigmoid_prime(wx)
-        sigmoid_gradient_contributions = map(self.activationPrime, y)
-        dE_dx = [a * b for a, b in
-                 zip(dE_dy, sigmoid_gradient_contributions)]
-        weight_gradient_contributions = np.array([a * b for a, b in
-                                                  zip(dE_dx, self.trainingSet.input)])
-        return weight_gradient_contributions
+
+
+
+    def _get_gradient(self, d, input):
+        y = self.layer.forward(input)
+        dE_dy = self.erf.calculateErrorPrime(d, np.array(y[0]))
+        # if toplayer, there are no weights after activation function
+        # -> weights are all one
+        dE_dx = self.layer.computeDerivative([dE_dy], np.ones(self.layer.nOut))
+        dE_dw = dE_dx * input
+        return dE_dw
 
 
 
@@ -149,7 +163,8 @@ class LogisticRegression(Classifier):
         bool :
             True if the testInstance is recognized as a 7, False otherwise.
         """
-        return self.fire(testInstance) >= 0.5
+        # there is just 1 output, for now...
+        return self.fire(testInstance)[0] >= 0.5
 
     def evaluate(self, test=None):
         """Evaluate a whole dataset.
@@ -171,13 +186,16 @@ class LogisticRegression(Classifier):
         return list(map(self.classify, test))
 
     def updateWeights(self, dE_dw):
-        total_gradient = np.sum(dE_dw)
-        self.weight += self.learningRate * total_gradient
+        total_gradient = []
+        for i in range(0, self.layer.nOut):
+            total_gradient.append(self.learningRate * np.sum(dE_dw))
+        self.layer.updateWeights(total_gradient)
 
     def fire(self, input):
         # Look at how we change the activation function here!!!!
         # Not Activation.sign as in the perceptron, but sigmoid
-        return self.activation(np.dot(np.array(input), self.weight))
+        #return self.activation(np.dot(np.array(input), self.weight))
+        return self.layer.forward(input)
 
     def _initialize_plot(self):
         pl.ion()

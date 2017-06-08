@@ -78,7 +78,7 @@ class MeanSquaredError(Error):
         return output_errors
 
     def calculateErrorPrime(self, target, output):
-        return np.array(target) - output
+        return target - output
 
 
 class SumSquaredError(Error):
@@ -96,7 +96,7 @@ class SumSquaredError(Error):
         return 0.5 *  np.sum(squares)
 
     def calculateErrorPrime(self, target, output):
-        return (2.0 / len(output)) * (np.array(target) - output)
+        return target - output
 
 class BinaryCrossEntropyError(Error):
     """

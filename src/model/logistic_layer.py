@@ -4,10 +4,10 @@ import time
 import numpy as np
 
 from util.activation_functions import Activation
-from model.layer import Layer
+# from model.layer import Layer
 
 
-class LogisticLayer(Layer):
+class LogisticLayer:
     """
     A layer of perceptrons acting as the output layer
 
@@ -47,6 +47,7 @@ class LogisticLayer(Layer):
         # Notice the functional programming paradigms of Python + Numpy
         self.activationString = activation
         self.activation = Activation.getActivation(self.activationString)
+        self.activationPrime = Activation.getDerivative(self.activationString)
 
         self.nIn = nIn
         self.nOut = nOut
@@ -84,7 +85,12 @@ class LogisticLayer(Layer):
         ndarray :
             a numpy array (1,nOut) containing the output of the layer
         """
-        pass
+        self.output = []
+        self.input = np.append([1], np.array(input))
+        for i in range(0, self.nOut):
+            self.output.append(self.activation(np.dot(self.input,
+                                                      self.weights[i])))
+        return self.output
 
     def computeDerivative(self, nextDerivatives, nextWeights):
         """
@@ -102,10 +108,19 @@ class LogisticLayer(Layer):
         ndarray :
             a numpy array containing the partial derivatives on this layer
         """
-        pass
+        derivatives = []
+        for i in range(0, self.nOut):
+            # sum of derivatives of the knode's output contributions
+            # a layer node gets contributions from every node in the layer above
+            dE_dy_i = np.dot(nextDerivatives, nextWeights)
+            dE_dx_i = dE_dy_i * self.activationPrime(self.output[i])
+            self.delta[i] = dE_dx_i
+        return self.delta[i]
 
-    def updateWeights(self):
+    def updateWeights(self, update_val):
         """
         Update the weights of the layer
         """
-        pass
+        # always update weights from outside the layer class
+        for i in range(0, self.nOut):
+            self.weights[i] += update_val[i]
