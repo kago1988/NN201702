@@ -60,6 +60,7 @@ class LogisticLayer:
         self.delta = np.zeros((nOut, 1))
 
         # You can have better initialization here
+        # wij means the weight from Input(j) to the Output(i)
         if weights is None:
             rns = np.random.RandomState(int(time.time()))
             self.weights = rns.uniform(size=(nOut, nIn + 1))-0.5
@@ -72,7 +73,7 @@ class LogisticLayer:
         self.size = self.nOut
         self.shape = self.weights.shape
 
-    def forward(self, input):
+    def forward(self, inputN):
         """
         Compute forward step over the input using its weights
 
@@ -87,11 +88,10 @@ class LogisticLayer:
             a numpy array (1,nOut) containing the output of the layer
         """
         pass
-        self.output = []
-        self.input = np.append([1], np.array(input))
+        self.input[1:self.nIn+1,0] = inputN
         for i in range(0, self.nOut):
-            self.output.append(self.activation(np.dot(self.input,
-                                                      self.weights[i])))
+            self.output[i,0] = self.activation(np.dot(self.weights[i],
+                                                      self.input))
         return self.output
 
     def computeDerivative(self, nextDerivatives, nextWeights):
@@ -104,14 +104,13 @@ class LogisticLayer:
             a numpy array containing the derivatives from next layer
         nextWeights : ndarray
             a numpy array containing the weights from next layer
-            OR a numpy matrix???????
         Returns
         -------
         ndarray :
             a numpy array containing the partial derivatives on this layer
         """
         for i in range(0, self.nOut):
-            dE_dy_i = np.dot(nextDerivatives, nextWeights[:, i+1])
+            dE_dy_i = np.dot(nextDerivatives,np.array(nextWeights)[:, i+1])
             dE_dx_i = dE_dy_i * self.activationPrime(self.output[i])
             self.delta[i] = dE_dx_i
         return self.delta
@@ -120,7 +119,6 @@ class LogisticLayer:
         """
         Update the weights of the layer
         """
-        pass
         #update weights actually always outside the layer class??
         for i in range(0, self.nOut):
             self.weights[i] += val[i]

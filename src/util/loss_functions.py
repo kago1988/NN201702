@@ -58,17 +58,16 @@ class MeanSquaredError(Error):
     def errorString(self):
         self.errorString = 'mse'
 
-    def calculateError(self, target, output):
+    def calculateError(self, targetN, outputN):
         # MSE = 1/n*sum (i=1 to n) of (target_i - output_i)^2)
         # muss zuerst target und output zu Array von Numpy wechseln!!
         # hier die Type von target und output sind Array von Numpy!!
-        output_errors = np.average((target - output)**2)
+        output_errors = np.average((targetN - outputN)**2)
         return output_errors
-        pass
 
-    def calculatePrime(self, target, output):
-        diff = target - output
-        prime = 2*np.dot(diff, output)/output.shape[0]
+    def calculatePrime(self, targetN, outputN):
+        diff = targetN - outputN
+        prime = 2*np.sum(diff*outputN)/outputN.shape[0]
         return prime
 
 class SumSquaredError(Error):
@@ -79,15 +78,15 @@ class SumSquaredError(Error):
     def errorString(self):
         self.errorString = 'sse'
 
-    def calculateError(self, target, output):
+    def calculateError(self, targetN, outputN):
         # SSE = 1/2*sum (i=1 to n) of (target_i - output_i)^2)
         # die Type von target und output sind Array aus Numpy!!!
         pass
-        squares = (output - target)**2
+        squares = (outputN - targetN)**2
         return 1/2 *  numpy.sum(squares)
 
-    def calculatePrime(self, target, output):
-        return np.dot((output - target), output)
+    def calculatePrime(self, targetN, outputN):
+        return np.dot((outputN - targetN), outputN)
 
 
 class BinaryCrossEntropyError(Error):

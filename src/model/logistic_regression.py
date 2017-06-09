@@ -50,8 +50,9 @@ class LogisticRegression(Classifier):
         self.testSet = test
 
         # Initialize the weight vector with small values
-        self.weight = 0.01*np.random.randn(self.trainingSet.input.shape[1])
-        weightPara = self.weight
+        self.weight = 0.01*np.random.randn(1, self.trainingSet.input.shape[1])
+        weight_Plus_bias = np.insert(self.weight, 0, 1, axis=1)
+        self.weight = weight_Plus_bias
 
         # Choose the error function
         self.errorString = error
@@ -59,9 +60,8 @@ class LogisticRegression(Classifier):
 
         #initialize also the layer
         self.layer = LogisticLayer(nIn = self.trainingSet.input.shape[1],
-                                   nOut = 1, activation = activation,
-                                   weights =np.append([1],
-                                                      np.array([self.weight])))
+                                   nOut = 1, activation = 'sigmoid',
+                                   weights = weight_Plus_bias)
 
     def _initialize_error(self, error):
         if error == 'absolute':
@@ -88,6 +88,7 @@ class LogisticRegression(Classifier):
         iteration = 0
         accuracy = []
         pl.ion()
+        input_Plus_bias = np.insert(self.trainingSet.input, 0, 1, axis=1)
 
         #Train for some epochs if the error is not 0
         while not learned:
@@ -99,14 +100,20 @@ class LogisticRegression(Classifier):
                                         hypothesis)
             #print("Error now is: %f", totalError)
             if totalError != 0:
-                output = []
+                output = np.array([])
                 for i in range(0, self.trainingSet.input.shape[0]):
-                    output.append(self.layer.forward(self.trainingSet.input[i]))
-                dE_dy =  self.erf.calculatePrime(np.array(self.trainingSet.label),output)
+                    if i == 0:
+                        output = self.layer.forward(self.trainingSet.input[i])
+                    else:
+                        np.append(output,
+                              self.layer.forward(self.trainingSet.input[i]),
+                              axis = 0)
+                dE_dy =self.erf.calculatePrime(np.array(self.trainingSet.label),
+                                               output)
                 # for only one neuron set the weight as [0,1]
-                dE_dx = self.layer.computeDerivative([dE_dy], [0, 1])
-                dE_dw = dE_dx * self.trainingSet.input
-                self.updateWeights(derivatives)
+                dE_dx = self.layer.computeDerivative([dE_dy], [[0, 1]])
+                dE_dw = dE_dx * input_Plus_bias
+                self.layer.updateWeights(dE_dw)
 
             iteration += 1
 
@@ -114,15 +121,15 @@ class LogisticRegression(Classifier):
                 logging.info("Epoch: %i; Error: %f", iteration, totalError)
             if totalError == 0 or iteration >= self.epochs:
                 learned = True
-            accuracy.append(accuracy_score(self.trainingSet.label, hypothesis))
+           # accuracy.append(accuracy_score(self.trainingSet.label, hypothesis))
             x = range(iteration)
-            pl.xlabel(u"Epochs")
-            pl.ylabel(u"Accuracy")
-            pl.xlim(0, self.epochs)
-            pl.ylim(0, 1.0)
-            pl.plot(x, accuracy, 'k')
-            pl.show()
-            pl.pause(0.01)
+           # pl.xlabel(u"Epochs")
+           # pl.ylabel(u"Accuracy")
+           # pl.xlim(0, self.epochs)
+           # pl.ylim(0, 1.0)
+           # pl.plot(x, accuracy, 'k')
+           # pl.show()
+           # pl.pause(0.01)
 
 
     def classify(self, testInstance):
@@ -137,8 +144,7 @@ class LogisticRegression(Classifier):
         bool :
             True if the testInstance is recognized as a 7, False otherwise.
         """
-        pass
-        return self.fire(testInstance) >= 0.5
+        return self.layer.forward(testInstance) >= 0.5
 
     def evaluate(self, test=None):
         """Evaluate a whole dataset.
@@ -160,7 +166,6 @@ class LogisticRegression(Classifier):
         return list(map(self.classify, test))
 
     def updateWeights(self, grad):
-        pass
         self.weight += self.learningRate*grad
 
     def fire(self, input):
