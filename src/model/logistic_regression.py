@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+import matplotlib.pylab as pl
 import sys
 import logging
 
@@ -7,6 +7,7 @@ import numpy as np
 
 from util.activation_functions import Activation
 from model.classifier import Classifier
+from sklearn.metrics import accuracy_score
 
 logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s',
                     level=logging.DEBUG,
@@ -55,9 +56,45 @@ class LogisticRegression(Classifier):
         verbose : boolean
             Print logging messages with validation accuracy if verbose is True.
         """
+        from util.loss_functions import MeanSquaredError
+        loss = MeanSquaredError()
 
-        pass
-        
+        learned = False
+        iteration = 0
+        target = np.array(self.trainingSet.label)
+        input = np.array(self.trainingSet.input)
+        accuracy = []
+        pl.ion()
+
+        while not learned:
+            output = np.array(list(map(self.classify, input)))
+            output_y = np.array(list(map(self.fire, input)))
+            totalError = loss.calculateError(target, output_y)
+            output_x = np.dot(input, self.weight)
+            dE_dy = target - output_y
+            #dE_dx = dE_dy*output_y*(1-output_y)
+            dE_dx = dE_dy
+            grad = np.dot(dE_dx, input)
+            self.updateWeights(grad)
+
+            iteration += 1
+
+            if verbose:
+                logging.info("Epoch: %i; Error: %f" , iteration, totalError)
+
+            if totalError == 0 or iteration >= self.epochs:
+                learned = True
+
+            accuracy.append(accuracy_score(self.trainingSet.label, output))
+            x = range(iteration)
+            pl.xlabel(u"Epochs")
+            pl.ylabel(u"Accuracy")
+            pl.xlim(0, self.epochs)
+            pl.ylim(0, 1.0)
+            pl.plot(x, accuracy, 'k')
+            pl.show()
+            pl.pause(0.01)
+
     def classify(self, testInstance):
         """Classify a single instance.
 
@@ -70,7 +107,7 @@ class LogisticRegression(Classifier):
         bool :
             True if the testInstance is recognized as a 7, False otherwise.
         """
-        pass
+        return self.fire(testInstance) > 0.5
 
     def evaluate(self, test=None):
         """Evaluate a whole dataset.
@@ -92,7 +129,8 @@ class LogisticRegression(Classifier):
         return list(map(self.classify, test))
 
     def updateWeights(self, grad):
-        pass
+        self.weight  += self.learningRate*grad
+        return self.weight
 
     def fire(self, input):
         # Look at how we change the activation function here!!!!
