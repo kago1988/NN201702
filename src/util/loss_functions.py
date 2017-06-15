@@ -6,6 +6,7 @@ Loss functions.
 """
 
 import numpy as np
+import math as m
 
 from abc import ABCMeta, abstractmethod, abstractproperty
 
@@ -96,6 +97,10 @@ class SumSquaredError(Error):
         return 0.5 *  np.sum(squares)
 
     def calculateErrorPrime(self, target, output):
+        """
+        Takes the single value output, and the single value desired output and
+        computes the derivative contribution for the pairs.
+        """
         return target - output
 
 class BinaryCrossEntropyError(Error):
@@ -103,15 +108,30 @@ class BinaryCrossEntropyError(Error):
     The Loss calculated by the Cross Entropy between binary target and
     probabilistic output (BCE)
     """
+    def __init__(self):
+        self.set_size = 1
+
     def errorString(self):
         self.errorString = 'bce'
 
     def calculateError(self, target, output):
-        pass
+        self.set_size = len(output)
+        entropy = 0.0
+        for i in range(0, len(output)):
+            entropy += target[i] * np.log(output[i]) \
+                       + (1.0 - target[i]) * np.log(1.0 - output[i])
+        entropy = -(1.0 / self.set_size) * entropy
+        return entropy
 
     def calculateErrorPrime(self, target, output):
         # error function derivative with respect to neuron output
-        pass
+        first_term = 0 if target == 0 else target * np.divide(1.0, output)
+        second_term = 0 if target == 1 else (1.0 - target) * \
+                                            np.divide(1.0, (1.0 - output)) * \
+                                            (-output)
+        derivative = first_term + second_term
+        #print((1.0 / self.set_size) * derivative)
+        return - np.divide(1.0, self.set_size) * derivative
 
 class CrossEntropyError(Error):
     """

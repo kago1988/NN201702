@@ -112,7 +112,7 @@ class LogisticRegression(Classifier):
                 derivatives.append(dE_dw)
 
             # compute error & update
-            output = list(map(self.classify, self.trainingSet.input))
+            output = list(map(lambda x: self.fire(x)[0], self.trainingSet.input))
             totalError = self.erf.calculateError(d, output)
             if totalError != 0:  # update weights if necessary
                 self.updateWeights(derivatives)
