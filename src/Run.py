@@ -23,9 +23,10 @@ def main():
     myLogisticRegressionClassifier = LogisticRegression(data.trainingSet,
                                                         data.validationSet,
                                                         data.testSet,
-                                                        learningRate=0.005,
+                                                        learningRate=2.,
                                                         epochs=50,
-                                                        error='bce')
+                                                        error='bce',
+                                                        network_representation=[1])
 
     # Train the classifiers
     print("=========================")

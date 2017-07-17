@@ -124,6 +124,13 @@ class BinaryCrossEntropyError(Error):
         return entropy
 
     def calculateErrorPrime(self, target, output):
+        """
+        Expects integer parameters!
+
+        :param target: The desired output.
+        :param output: The actual output.
+        :return: The error derivative.
+        """
         # error function derivative with respect to neuron output
         first_term = 0 if target == 0 else target * np.divide(1.0, output)
         second_term = 0 if target == 1 else (1.0 - target) * \
