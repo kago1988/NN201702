@@ -52,9 +52,9 @@ class LogisticRegression(Classifier):
         self.validationSet = valid
         self.testSet = test
 
-        # Initialize the weight vector with small values between -3 and 3
+        # Initialize the weight vector with small values between -1 and 1
         # coresponding to the accelerated learning area for the sigmoid function
-        weight = np.random.rand(self.trainingSet.input.shape[1] + 1) * 6 - 3
+        weight = np.random.rand(self.trainingSet.input.shape[1] + 1) - 1
 
         self.erString = error
         self._initialize_error(error)
@@ -93,6 +93,15 @@ class LogisticRegression(Classifier):
         verbose : boolean
             Print logging messages with validation accuracy if verbose is True.
         """
+
+        # before anything we need to normalize the data such that it the sigmoid function
+        # output is not too small
+        # normalized_input = [np.negative(self.trainingSet.input[i])
+        #                     if not self.trainingSet.label[i]
+        #                     else self.trainingSet.input[i]
+        #                     for i in range(0, len(self.trainingSet.input))]
+
+
         learned = False
         iteration = 0
         accuracy = []
@@ -148,8 +157,9 @@ class LogisticRegression(Classifier):
         # if toplayer, there are no weights after activation function
         # -> weights are all one
         dE_dx = self.layer.computeDerivative([dE_dy], np.ones(self.layer.nOut))
-
-        dE_dw = dE_dx * input
+        # dE_dw should be a vector containing the gradient in each dimension
+        # of the input (dim(dE_dw) = dim(input))
+        dE_dw = dE_dx * np.append([1], np.array(input))
         return dE_dw
 
 
@@ -191,7 +201,16 @@ class LogisticRegression(Classifier):
     def updateWeights(self, dE_dw):
         total_gradient = []
         for i in range(0, self.layer.nOut):
-            total_gradient.append(self.learningRate * np.sum(dE_dw))
+            # this was the problem: sum(matrix) sums all the value in the matrix
+            # ergo this resulted in an array of exactly one scalar value, when
+            # instead it should have been an array of contributions ...
+            # total_gradient.append(self.learningRate * np.sum(dE_dw))
+            sum_derivatives = np.ones(np.array(dE_dw).shape[1])
+            # print(sum_derivatives.shape)
+            # print(len(dE_dw[0]))
+            for i in range(0, len(dE_dw)):
+                sum_derivatives += dE_dw[i]
+            total_gradient.append(self.learningRate * sum_derivatives);
         self.layer.updateWeights(total_gradient)
 
     def fire(self, input):
