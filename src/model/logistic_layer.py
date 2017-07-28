@@ -18,6 +18,10 @@ class LogisticLayer:
     activation: string: activation function of every units in the layer
     isClassifierLayer: bool:  to do classification or regression
 
+    The bias dummy node is always first in the implicit list of nodes
+    represented through weights. Note that while the bias weight must be
+    updated in each layer, no error can be propagated through this node.
+
     Attributes
     ----------
     nIn : positive int:
@@ -89,8 +93,12 @@ class LogisticLayer:
         self.output = []
         self.input = np.append([1], np.array(layerInput))
         for i in range(0, self.nOut):
-            self.output.append(self.activation(np.dot(self.input,
-                                                      self.weights[i])))
+            try:
+                self.output.append(self.activation(np.dot(self.input,
+                                                          self.weights[i])))
+            except ValueError as e:
+                print("Failed to compute the activation of the following dot product: "
+                      + str(self.input) + " and " + str(self.weights[i]))
         return self.output
 
     # here's where the magic happens ^^
@@ -100,11 +108,10 @@ class LogisticLayer:
         1.) First we calculate the propagated output error:
         dE_dy_i = expected_i - net_i
                 = sum_{ j in {1 .. nIn}} dE_dx_j * w_ij}
-                = sum_{ j in {1 .. nIn}} nextDerivatives[j] * nextWeights[i][j]
-                = nextDerivatives * nextWeights[i], i in {1 .. nOut}
+                = sum_{ j in {1 .. nIn}} nextDerivatives[j] * nextWeights[j][i], i in {1 .. nOut}
         2.) from this we can calculate the new derivatives out of the
         activation function which we return to the caller together with the current
-        weightss:
+        weights:
         dE_dx_i = dE_dy_i * dy_i_dx_i
                 = dE_dy_i * y_i * (1 - y_i)
                 = dE_dy_i * self.activationPrime(self.output[i]), i in {1 .. nOut}
@@ -129,6 +136,7 @@ class LogisticLayer:
         ndarray :
             a numpy array containing the partial derivatives on this layer
         """
+        self.delta = []
         newDerivatives = []
         oldWeights = []
         for i in range(0, self.nOut):
@@ -136,7 +144,10 @@ class LogisticLayer:
             if self.isClassifierLayer:
                 dE_dy_i = nextDerivatives[i]
             else:
-                dE_dy_i = nextDerivatives * nextWeights[i]
+                dE_dy_i = 0
+                for j in range(0, len(nextDerivatives)):
+                    # when looking for contributions  from the layer above, skip the bias! ...[i + 1]
+                    dE_dy_i += nextDerivatives[j] * nextWeights[j][i + 1]
             # 2.) from this we can calculate the new derivatives
             dE_dx_i = dE_dy_i * self.activationPrime(self.output[i])
             newDerivatives.append(dE_dx_i)
@@ -153,4 +164,10 @@ class LogisticLayer:
         """
         # always update weights from outside the layer class
         for i in range(0, self.nOut):
-            self.weights[i] += self.learningRate * np.array(self.delta[i])
+            update_value = self.learningRate * self.delta[i]
+            if np.isnan(update_value).any():
+                raise ValueError("Through the roof! The update value for the "
+                                 "layer weights just exploded... " + str(self.delta) +
+                                 " does not bode well with a learning rate of " + str(self.learningRate))
+            self.weights[i] -= update_value
+

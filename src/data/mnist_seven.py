@@ -19,6 +19,12 @@ class MNISTSeven(object):
         Number of validation examples.
     numTest : int
         Number of test examples.
+    oneHot: bool
+        If this flag is set, then all labels which are not `targetDigit` will
+        be transformed to False and `targetDigit` bill be transformed to True.
+        Set it to False for full MNIST task
+    targetDigit : string
+        Label of the dataset, e.g. '7'.
 
     Attributes
     ----------
@@ -29,18 +35,20 @@ class MNISTSeven(object):
 
     # dataPath = "data/mnist_seven.csv"
 
-    def __init__(self, dataPath, 
-                        numTrain=3000, 
+    def __init__(self, dataPath,
+                        numTrain=3000,
                         numValid=1000,
-                        numTest=1000):
+                        numTest=1000,
+                        oneHot=True,
+                        targetDigit='7'):
 
         self.trainingSet = []
         self.validationSet = []
         self.testSet = []
 
-        self.load(dataPath, numTrain, numValid, numTest)
+        self.load(dataPath, numTrain, numValid, numTest, oneHot, targetDigit)
 
-    def load(self, dataPath, numTrain, numValid, numTest):
+    def load(self, dataPath, numTrain, numValid, numTest, oneHot, targetDigit):
         """Load the data."""
         print("Loading data from " + dataPath + "...")
 
@@ -52,8 +60,8 @@ class MNISTSeven(object):
 
         train, valid = train[:numTrain], train[numTrain:]
 
-        self.trainingSet = DataSet(train)
-        self.validationSet = DataSet(valid)
-        self.testSet = DataSet(test)
+        self.trainingSet = DataSet(train, oneHot, targetDigit)
+        self.validationSet = DataSet(valid, oneHot, targetDigit)
+        self.testSet = DataSet(test, oneHot, targetDigit)
 
         print("Data loaded.")

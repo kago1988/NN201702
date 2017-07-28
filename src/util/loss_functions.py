@@ -133,9 +133,17 @@ class BinaryCrossEntropyError(Error):
         """
         # error function derivative with respect to neuron output
         first_term = 0 if target == 0 else target * np.divide(1.0, output)
-        second_term = 0 if target == 1 else (1.0 - target) * \
-                                            np.divide(1.0, (1.0 - output)) * \
-                                            (-output)
+        if target == 1:
+            second_term = 0
+        else:
+            # here we sometimes get zero if we overshoot terribly (as in we expect a 0
+            # and we get a value infinitesimally close to one...)
+            # print("t: " + str(target) + " <---> o: " + str(output))
+            second_term = (1.0 - target) * np.divide(1.0, (1.0 - output)) * (-output)
+            if np.isnan(second_term):
+                error_string = 'Error is through the stratosfere and too close to one! ' \
+                               'We expected a value close to 0 and got ' + str(output)
+                raise ValueError(error_string)
         derivative = first_term + second_term
         #print((1.0 / self.set_size) * derivative)
         return - np.divide(1.0, self.set_size) * derivative

@@ -5,7 +5,8 @@ Activation functions which can be used within neurons.
 """
 
 from numpy import exp
-from numpy import divide
+from numpy import divide, isnan
+import math as m
 
 
 class Activation:
@@ -20,6 +21,14 @@ class Activation:
     @staticmethod
     def sigmoid(netOutput):
         sig = divide(1.0, (1.0 + exp(-netOutput)))
+        if isnan(sig):
+            error_string = 'sigmoid spat a nan because the net output is ' + str(netOutput)
+            raise ValueError(error_string)
+        if sig == 1:
+            print("sigmoid spat a 1, which should not have happened, "
+                  "because we foolishly trusted the numpy exp and divide implementations... "
+                  "\nThe net output was " + str(netOutput) +
+                  "\nThe exp function result was " + str(exp(-netOutput)))
         return sig
 
     @staticmethod
