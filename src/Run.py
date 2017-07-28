@@ -9,10 +9,13 @@ from report.evaluator import Evaluator
 
 
 def main():
-    data = MNISTSeven("../data/mnist_seven.csv", 3000, 1000, 1000)
+    data = MNISTSeven("../data/mnist_seven.csv", 3000, 1000, 1000
+                      , oneHot=True, targetDigit=-1)
+
     myStupidClassifier = StupidRecognizer(data.trainingSet,
                                           data.validationSet,
                                           data.testSet)
+
     myPerceptronClassifier = Perceptron(data.trainingSet,
                                         data.validationSet,
                                         data.testSet,
@@ -23,10 +26,10 @@ def main():
     myLogisticRegressionClassifier = LogisticRegression(data.trainingSet,
                                                         data.validationSet,
                                                         data.testSet,
-                                                        learningRate=0.05,
-                                                        epochs=50,
-                                                        error='bce',
-                                                        network_representation=[2, 1])
+                                                        learningRate=0.0005,
+                                                        epochs=1000,
+                                                        error='crossentropy',
+                                                        network_representation=[10])
 
     # Train the classifiers
     print("=========================")

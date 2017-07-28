@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import numpy as np
 
 class DataSet(object):
     """
@@ -34,10 +35,19 @@ class DataSet(object):
 
         # Transform all labels which is not the targetDigit to False,
         # The label of targetDigit will be True,
-        if oneHot:
-            self.label = list(map(lambda a: 1 
-                            if str(a) == targetDigit else 0, 
+        if oneHot and targetDigit != -1:
+            self.label = list(map(lambda a: 1
+                            if str(a) == targetDigit else 0,
                             self.label))
+        elif oneHot and targetDigit == -1:
+            a = list(map(lambda a: int(a), self.label))
+            b = np.zeros((len(a), 10))
+            b[np.arange(len(a)), np.array(a)] = 1
+            self.label = b
+        else:
+            raise ValueError("Could not infer label format. Select either oneHot "
+                             "with a targetDigit between 0 and 9 (for binary class classification) "
+                             "or oneHot with targetDigit -1 (for multiclass classification).")
 
     def __iter__(self):
         return self.input.__iter__()

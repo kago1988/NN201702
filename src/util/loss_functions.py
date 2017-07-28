@@ -94,7 +94,7 @@ class SumSquaredError(Error):
         # SSE = 1/2*sum (i=1 to n) of (target_i - output_i)^2)
         # die Type von target und output sind Array aus Numpy!!!
         squares = (output - target)**2
-        return 0.5 *  np.sum(squares)
+        return 0.5 * np.sum(squares)
 
     def calculateErrorPrime(self, target, output):
         """
@@ -156,9 +156,47 @@ class CrossEntropyError(Error):
     def errorString(self):
         self.errorString = 'crossentropy'
 
-    def calculateError(self, target, output):
-        pass
+    def calculateError(self, desired_output, model_output):
+        """
+        Uses the one-hot encoding of the desired output to compute an approximation of the cross-
+        entropy of the label distribution and the predicted (model) label distribution. Minimizing
+        this cross-entropy corresponds to maximizing the loglikelyhood of the model distribution.
 
-    def calculateErrorPrime(self, target, output):
-        # error function derivative with respect to neuron output
-        pass
+        see: https://stats.stackexchange.com/questions/79454/softmax-layer-in-a-neural-network/92309#92309
+
+        :param desired_output: The label distribution for this input.
+        :param model_output: The label distribution predicted by the model.
+        :return: The cross-entropy error.
+        """
+        error = 0
+        for i in range(0, len(desired_output)):     # assumes one-hot encoding of the class labels!
+            class_component = np.dot(desired_output[i], model_output[i])
+            log_likelyhood = np.log(class_component)
+            error -= log_likelyhood
+        return error
+
+    def calculateErrorPrime(self, desired_output, model_output):
+        """
+        Computes the cross-entropy derivative with respect to the (softmax activated)
+        preactivation values.
+
+        We meld the computation of the output error derivative with respect to
+        activation value into the derivative of the error function with respect to the
+        preactivation value, since we only plan to use softmax with cross-entropy.
+
+        This locks the softmax layer activation function to the cross-entropy error function.
+
+        We do this, because cross-entropy is typically used with softmax anyway, and because
+        this solution is far more numerically stable than computing the jackobi matrix and
+        multiplying it by the net output vector (thus yielding the derivative of the softmax
+        with respect to the preactivation values), which would then have to be multiplied by
+        the derivative of the error-function with respect to the net output.
+
+        see: https://stats.stackexchange.com/questions/79454/softmax-layer-in-a-neural-network/92309#92309
+
+        :param desired_output: The real class labels for the current input.
+        :param model_output: The labels predicted by the model for the current input.
+        :return: The Cross-entropy error derivative with respect to the preactivation values.
+        """
+        dE_dx = np.array(model_output) - np.array(desired_output)
+        return dE_dx

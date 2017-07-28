@@ -4,10 +4,7 @@
 Activation functions which can be used within neurons.
 """
 
-from numpy import exp
-from numpy import divide, isnan
-import math as m
-
+import numpy as np
 
 class Activation:
     """
@@ -20,15 +17,15 @@ class Activation:
 
     @staticmethod
     def sigmoid(netOutput):
-        sig = divide(1.0, (1.0 + exp(-netOutput)))
-        if isnan(sig):
+        sig = np.divide(1.0, (1.0 + np.exp(-netOutput)))
+        if np.isnan(sig):
             error_string = 'sigmoid spat a nan because the net output is ' + str(netOutput)
             raise ValueError(error_string)
         if sig == 1:
             print("sigmoid spat a 1, which should not have happened, "
                   "because we foolishly trusted the numpy exp and divide implementations... "
                   "\nThe net output was " + str(netOutput) +
-                  "\nThe exp function result was " + str(exp(-netOutput)))
+                  "\nThe exp function result was " + str(np.exp(-netOutput)))
         return sig
 
     @staticmethod
@@ -65,9 +62,23 @@ class Activation:
         pass
 
     @staticmethod
-    def softmax(netOutput):
-        # Here you have to code the softmax function
-        pass
+    def softmax(preactivation_values):
+        """
+        Receives the list of net outputs of a layer which it then uses to
+        associate (class) probabilities to each one.
+
+        :param preactivation_values: The vector of preactivation values.
+        :return: The (class) probability distribution.
+        """
+        model_conditional_class_distribution = []
+        exp_preactivation = map(lambda a: np.exp(a), preactivation_values)
+        sum = 0
+        for el in exp_preactivation:
+            sum += el
+        for i in range(0, len(exp_preactivation)):
+            class_probability = np.divide(exp_preactivation[i], sum)
+            model_conditional_class_distribution.append(class_probability)
+        return model_conditional_class_distribution
 
     @staticmethod
     def getActivation(str):

@@ -48,7 +48,6 @@ class LogisticRegression(Classifier):
 
     def __init__(self, train, valid, test,
                  learningRate=0.01, epochs=50,
-                 activation_string='sigmoid',
                  error='mse',
                  network_representation=None):
         """
@@ -84,7 +83,6 @@ class LogisticRegression(Classifier):
         self.validationSet = valid
         self.testSet = test
         # design globals
-        self.activation_string = activation_string
         self.erString = error
         # architecture initialization
         self._initialize_error(error)
@@ -110,29 +108,28 @@ class LogisticRegression(Classifier):
         """
         self.layers = []
         nIn = self.trainingSet.input.shape[1]
-        nLayers = len(network_representation);
+        nLayers = len(network_representation) + 1;
         for i in range(0, nLayers):
             # initialize layer weights:
             # a separate array of weights for each node in the layer.
             weights = []
-            for j in range(0, network_representation[i]):
-                weight = np.random.rand(nIn + 1) - 0.5    # tweak initial weights here!
-                weights.append(weight)
             if i != nLayers - 1:
                 layer = LogisticLayer(nIn=nIn,
                                       nOut=network_representation[i],
-                                      activation=self.activation_string,
-                                      weights=np.array(weights),
+                                      activation="sigmoid",
+                                      weights=None,
                                       learningRate=self.learningRate,
                                       isClassifierLayer=False)
+                nIn = network_representation[i]
             else:   # mark the output layer as the classifier layer
+                nOut = self.trainingSet.label.shape[1]
                 layer = LogisticLayer(nIn=nIn,
-                                      nOut=network_representation[i],
-                                      activation=self.activation_string,
-                                      weights=np.array(weights),
+                                      nOut=nOut,
+                                      activation="softmax",
+                                      weights=None,
                                       learningRate=self.learningRate)
             self.layers.append(layer)
-            nIn = network_representation[i]
+
 
     def train(self, verbose=True):
         """Train the Logistic Regression.
@@ -145,6 +142,7 @@ class LogisticRegression(Classifier):
 
         learned = False
         iteration = 0
+        epoch = 0
         accuracy = []
         error_progresion = []
         self._initialize_plot()
@@ -157,10 +155,13 @@ class LogisticRegression(Classifier):
             # whenever we do a forward pass we also have to do a backw pass.
             # we compute the error, do the update and cross_validate after the loop
             for i in range(0, self.trainingSet.input.shape[0]):
-                self._tune_net_parameters(d[i], self.trainingSet.input[i])
+                self._tune_net_parameters(d[i], self.trainingSet.input[i])#
 
+            epoch += 1
+
+            #if epoch % 50 == 0:
             # compute error
-            output = list(map(lambda x: self.fire(x)[0], self.trainingSet.input))
+            output = list(map(lambda x: self.fire(x), self.trainingSet.input))
             totalError = self.erf.calculateError(d, output)
             error_progresion.append(totalError)
 
@@ -170,7 +171,7 @@ class LogisticRegression(Classifier):
             new_score = accuracy_score(self.validationSet.label, validation_output)
             accuracy.append(accuracy_score(self.validationSet.label,
                                            validation_output))
-            
+
             # stop conditions (early stopping implemented by comparing old_score and new_score)
             iteration += 1
             if totalError == 0 or iteration >= self.epochs: # or old_score > new_score
@@ -187,8 +188,15 @@ class LogisticRegression(Classifier):
 
     def _tune_net_parameters(self, d, input):
         y = self.fire(input)
-        dE_dy = self.erf.calculateErrorPrime(d, np.array(y[0]))
-        newDerivatives, oldWeights = ([dE_dy], None)
+
+        if self.erString == 'crossentropy' and self.layers[-1].activationString == 'softmax':
+            dE_dx = self.erf.calculateErrorPrime(d, np.array(y[0]))
+            newDerivatives, oldWeights = (dE_dx, None)
+        elif self.layers[-1].activationString == 'sigmoid':
+            dE_dy = self.erf.calculateErrorPrime(d, np.array(y[0]))
+            newDerivatives, oldWeights = (dE_dy, None)
+        else:
+            raise ValueError("Illegal activation&error-function combination!")
         for layer in reversed(self.layers):
             newDerivatives, oldWeights = layer.computeDerivative(
                 newDerivatives, oldWeights)
@@ -205,8 +213,15 @@ class LogisticRegression(Classifier):
         bool :
             True if the testInstance is recognized as a 7, False otherwise.
         """
-        # there is just 1 output, for now...
-        return self.fire(testInstance)[0] >= 0.5
+        result = self.fire(testInstance)
+        index = np.argmax(result)
+        for i in range(0, len(result)):
+            if i == index:
+                result[i] = 1
+            else:
+                result[i] = 0
+        return result
+
 
     def evaluate(self, test=None):
         """Evaluate a whole dataset.
