@@ -68,7 +68,6 @@ class LogisticLayer:
         self.momentum_matrix = np.zeros((nOut, nIn + 1))   # momentum
 
         # learning rate, momentum influence and regularization influence
-        self.learningRate = learningRate
         self.momentumRate = momentumRate
         self.regularizationRate = regularization_rate
 
@@ -125,7 +124,7 @@ class LogisticLayer:
         return self.output
 
     # here's where the magic happens ^^
-    def computeDerivative(self, nextDerivatives, nextWeights):
+    def computeDerivative(self, nextDerivatives, nextWeights, learningRate):
         """
         Compute the derivatives (backward pass) as follows:
         1.) First we calculate the propagated output error:
@@ -179,23 +178,23 @@ class LogisticLayer:
             # 3.) add derivatives with respect to weights
             self.gradient_matrix.append(dE_dx_i * self.input)
         # update weights
-        self.updateWeights()
+        self.updateWeights(learningRate)
         return np.array(newDerivatives), np.array(oldWeights)
 
-    def updateWeights(self):
+    def updateWeights(self, learningRate):
         """
         Update the weights of the layer
         """
         for i in range(0, self.nOut):
             # L2 regularization
             regularizetion_contribution = (self.regularizationRate) * 2 * self.weights[i]
-            weight_gradient_contribution = (-self.learningRate) * (self.gradient_matrix[i] + regularizetion_contribution)
+            weight_gradient_contribution = (-learningRate) * (self.gradient_matrix[i] + regularizetion_contribution)
             # momentum
             momentum_contribution = self.momentumRate * self.momentum_matrix[i]
             self.momentum_matrix[i] = weight_gradient_contribution
             if np.isnan(weight_gradient_contribution).any():
                 raise ValueError("Through the roof! The update value for the "
                                  "layer weights just exploded... " + str(self.gradient_matrix) +
-                                 " does not bode well with a learning rate of " + str(self.learningRate))
+                                 " does not bode well with a learning rate of " + str(learningRate))
             self.weights[i] += weight_gradient_contribution + momentum_contribution
 

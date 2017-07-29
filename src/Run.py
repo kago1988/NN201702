@@ -6,8 +6,9 @@ from model.stupid_recognizer import StupidRecognizer
 from model.perceptron import Perceptron
 from model.logistic_regression import LogisticRegression
 from report.evaluator import Evaluator
+from sklearn.metrics import accuracy_score
 
-import pickle as pk
+import cloudpickle as pk
 
 def main():
     data = MNISTSeven("../data/mnist_seven.csv", 3000, 1000, 1000
@@ -27,12 +28,15 @@ def main():
     myLogisticRegressionClassifier = LogisticRegression(data.trainingSet,
                                                         data.validationSet,
                                                         data.testSet,
-                                                        learningRate=0.5,
+                                                        learningRate=4.,
+                                                        annealing=True,
+                                                        # the learning rate is divided by annealingRate * epoch
+                                                        annealingRate=0.5,
                                                         momentum=1,
                                                         regularization_rate=0,
-                                                        epochs=1000,
+                                                        epochs=150,
                                                         error='crossentropy',
-                                                        network_representation=[10])
+                                                        network_representation=[20])
 
     # Train the classifiers
     print("=========================")
@@ -42,31 +46,24 @@ def main():
     print("\nTraining the Feed Forward Neural Network...")
     myLogisticRegressionClassifier.train()
     print("Done!")
-    print("\nSaving model...")
-    pk.dump(myLogisticRegressionClassifier)
-    print("Done!")
 
-    # Do the recognizer
-    # Explicitly specify the test set to be evaluated
-    #stupidPred = myStupidClassifier.evaluate()
-    #perceptronPred = myPerceptronClassifier.evaluate()
+    # use the model
     LogisticRegressionPred = myLogisticRegressionClassifier.evaluate()
 
-    # Report the result
+    # report the result
     print("=========================")
     evaluator = Evaluator()
 
-    #print("Result of the stupid recognizer:")
-    # evaluator.printComparison(data.testSet, stupidPred)
-    #evaluator.printAccuracy(data.testSet, stupidPred)
-
-    #print("\nResult of the Perceptron recognizer:")
-    # evaluator.printComparison(data.testSet, perceptronPred)
-    #evaluator.printAccuracy(data.testSet, perceptronPred)
-
     print("Result of the FFNN")
+    accuracy = accuracy_score(data.testSet.label, LogisticRegressionPred)
     evaluator.printAccuracy(data.testSet, LogisticRegressionPred)
 
+    print("\nSaving model...")
+    model_deposit = open(myLogisticRegressionClassifier.model_descriptor + "_" +
+                         str(accuracy) + "accuracy", "w")
+    pk.dump(myLogisticRegressionClassifier, model_deposit)
+    model_deposit.close()
+    print("Done!")
 
 if __name__ == '__main__':
     main()

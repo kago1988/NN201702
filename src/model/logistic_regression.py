@@ -47,9 +47,8 @@ class LogisticRegression(Classifier):
     """
 
     def __init__(self, train, valid, test,
-                 learningRate=0.01, momentum=0.005, regularization_rate=0.5, epochs=50,
-                 error='mse',
-                 network_representation=None):
+                 learningRate=0.01, momentum=0.005, regularization_rate=0.5, annealing=False,
+                 epochs=50, error='mse', network_representation=None, annealingRate=0.5):
         """
         Class constructors. Initializes a fully connected feed forward neural
         network with the following a layer architecture design implicitly defined
@@ -76,8 +75,12 @@ class LogisticRegression(Classifier):
         """
 
         # tuning globals
+        self.annealing = annealing
+        self.annealingRate = annealingRate
         self.learningRate = learningRate
         self.epochs = epochs
+        self.momentum = momentum
+        self.regularization = regularization_rate
         # data globals
         self.trainingSet = train
         self.validationSet = valid
@@ -87,6 +90,13 @@ class LogisticRegression(Classifier):
         # architecture initialization
         self._initialize_error(error)
         self._initialize_network(network_representation, momentum, regularization_rate)
+        self._set_descriptor_string(network_representation)
+
+    def _set_descriptor_string(self, network_representation):
+        annealing_str = str(self.annealingRate) + "annealed" if self.annealing else ""
+        self.model_descriptor = "ffnn_" + str(network_representation) + "nodes_" \
+                                + str(self.epochs) + "epochs_" + str(self.learningRate) + "lr_" \
+                                + str(self.momentum) + "m_" + annealing_str
 
     def _initialize_network(self, network_representation, momentum, regularization_rate):
         """
@@ -147,7 +157,8 @@ class LogisticRegression(Classifier):
         learned = False
         iteration = 0
         epoch = 0
-        accuracy = []
+        accuracy_validationSet = []
+        accuracy_trainingSet = []
         error_progresion = []
         self._initialize_plot()
         legend_exists = False
@@ -159,7 +170,8 @@ class LogisticRegression(Classifier):
             # whenever we do a forward pass we also have to do a backw pass.
             # we compute the error, do the update and cross_validate after the loop
             for i in range(0, self.trainingSet.input.shape[0]):
-                self._tune_net_parameters(d[i], self.trainingSet.input[i])#
+                self._tune_net_parameters(d[i], self.trainingSet.input[i],
+                                          self.trainingSet.label[i])
 
             epoch += 1
 
@@ -172,9 +184,15 @@ class LogisticRegression(Classifier):
             # validation
             validation_output = np.array(list(map(self.classify,
                                                   self.validationSet.input)))
-            new_score = accuracy_score(self.validationSet.label, validation_output)
-            accuracy.append(accuracy_score(self.validationSet.label,
-                                           validation_output))
+            new_score = accuracy_score(self.validationSet.label,
+                                                 validation_output)
+            training_output = np.array(list(map(self.classify,
+                                                    self.trainingSet.input)))
+
+            accuracy_validationSet.append(accuracy_score(self.validationSet.label,
+                                                         validation_output))
+            accuracy_trainingSet.append(accuracy_score(self.trainingSet.label,
+                                                       training_output))
 
             # stop conditions (early stopping implemented by comparing old_score and new_score)
             iteration += 1
@@ -187,23 +205,26 @@ class LogisticRegression(Classifier):
                 logging.info("Epoch: %i; Error: %f", iteration, totalError)
             # plots
             legend_exists= self._update_plot(iteration,
-                              accuracy, error_progresion,
+                              accuracy_validationSet, accuracy_trainingSet, error_progresion,
                               legend_exists)
 
-    def _tune_net_parameters(self, d, input):
+    def _tune_net_parameters(self, d, input, input_label):
         y = self.fire(input)
-
-        if self.erString == 'crossentropy' and self.layers[-1].activationString == 'softmax':
-            dE_dx = self.erf.calculateErrorPrime(d, np.array(y))
-            newDerivatives, oldWeights = (dE_dx, None)
-        elif self.layers[-1].activationString == 'sigmoid':
-            dE_dy = self.erf.calculateErrorPrime(d, np.array(y[0]))
-            newDerivatives, oldWeights = (dE_dy, None)
-        else:
-            raise ValueError("Illegal activation&error-function combination!")
-        for layer in reversed(self.layers):
-            newDerivatives, oldWeights = layer.computeDerivative(
-                newDerivatives, oldWeights)
+        if not np.array_equal(y, input_label):  # skip correctly classified inputs
+            learningRate = np.divide(self.learningRate,
+                                     self.annealingRate * self.epochs + 2) \
+                if self.annealing else self.learningRate
+            if self.erString == 'crossentropy' and self.layers[-1].activationString == 'softmax':
+                dE_dx = self.erf.calculateErrorPrime(d, np.array(y))
+                newDerivatives, oldWeights = (dE_dx, None)
+            elif self.layers[-1].activationString == 'sigmoid':
+                dE_dy = self.erf.calculateErrorPrime(d, np.array(y[0]))
+                newDerivatives, oldWeights = (dE_dy, None)
+            else:
+                raise ValueError("Illegal activation&error-function combination!")
+            for layer in reversed(self.layers):
+                newDerivatives, oldWeights = layer.computeDerivative(
+                    newDerivatives, oldWeights, learningRate)
 
     def classify(self, testInstance):
         """Classify a single instance.
@@ -270,7 +291,8 @@ class LogisticRegression(Classifier):
         """
         pl.ion()
 
-    def _update_plot(self, iteration, accuracy, error, legend_exists):
+    def _update_plot(self, iteration, accuracy_validation, accuracy_training,
+                     error, legend_exists):
         """
         Updates the runtime plot with the new accuracy and error values.
         If the legend has not yet been added to the plot, it will also be
@@ -285,19 +307,20 @@ class LogisticRegression(Classifier):
         :return: Returns True to indicate the legend has been added.
         """
         if iteration == self.epochs - 1:
-            pl.savefig("experiment_results.png")
+            pl.savefig(self.model_descriptor + ".png")
         x = range(iteration)
         pl.xlabel(u"Epochs")
         pl.figure(1)
         sp1 = pl.subplot(211)
         pl.xlim(0, self.epochs)
         pl.ylim(0, 1.0)
-        pl.plot(x, accuracy, 'g-', label='accuracy')
+        pl.plot(x, accuracy_validation, 'b-', label='validation accuracy')
+        pl.plot(x, accuracy_training, 'g-', label='training accuracy')
 
         sp2 = pl.subplot(212)
         pl.xlim(0, self.epochs)
         pl.ylim(0, np.max(error))
-        pl.plot(x, error, 'r-', label=(self.erString + ' error'))
+        pl.plot(x, error, 'r-', label=(self.erString + 'net error'))
         if not legend_exists:
             # Now add the legend with some customizations.
             sp1.legend(loc='upper right')
