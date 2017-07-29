@@ -48,7 +48,8 @@ class LogisticRegression(Classifier):
 
     def __init__(self, train, valid, test,
                  learningRate=0.01, momentum=0.005, regularization_rate=0.5, annealing=False,
-                 epochs=50, error='mse', network_representation=None, annealingRate=0.5):
+                 epochs=50, error='mse', network_representation=None, annealingRate=0.5,
+                 batch_size = 1):   # sgd by default
         """
         Class constructors. Initializes a fully connected feed forward neural
         network with the following a layer architecture design implicitly defined
@@ -81,6 +82,7 @@ class LogisticRegression(Classifier):
         self.epochs = epochs
         self.momentum = momentum
         self.regularization = regularization_rate
+        self.batch_size = batch_size
         # data globals
         self.trainingSet = train
         self.validationSet = valid
@@ -95,8 +97,10 @@ class LogisticRegression(Classifier):
     def _set_descriptor_string(self, network_representation):
         annealing_str = str(self.annealingRate) + "annealed" if self.annealing else ""
         self.model_descriptor = "ffnn_" + str(network_representation) + "nodes_" \
-                                + str(self.epochs) + "epochs_" + str(self.learningRate) + "lr_" \
-                                + str(self.momentum) + "m_" + annealing_str
+                                + str(self.epochs) + "epochs_" \
+                                + str(self.learningRate) + "lr_" \
+                                + str(self.momentum) + "m_" + annealing_str + "_" \
+                                + str(self.batch_size) + "batchSize"
 
     def _initialize_network(self, network_representation, momentum, regularization_rate):
         """
@@ -128,7 +132,6 @@ class LogisticRegression(Classifier):
                                       nOut=network_representation[i],
                                       activation="sigmoid",
                                       weights=None,
-                                      learningRate=self.learningRate,
                                       isClassifierLayer=False,
                                       regularization_rate=regularization_rate,
                                       momentumRate=momentum)
@@ -139,7 +142,6 @@ class LogisticRegression(Classifier):
                                       nOut=nOut,
                                       activation="softmax",
                                       weights=None,
-                                      learningRate=self.learningRate,
                                       regularization_rate=regularization_rate,
                                       momentumRate=momentum)
             self.layers.append(layer)
@@ -166,12 +168,18 @@ class LogisticRegression(Classifier):
         old_score = 0  # for early stopping
         while not learned:
             d = np.array(self.trainingSet.label)    # the desired output for the ts
-
+            n_inputs = self.trainingSet.input.shape[0]
             # whenever we do a forward pass we also have to do a backw pass.
             # we compute the error, do the update and cross_validate after the loop
-            for i in range(0, self.trainingSet.input.shape[0]):
-                self._tune_net_parameters(d[i], self.trainingSet.input[i],
+            for i in range(0, n_inputs):
+                self._update_net_gradient(d[i], self.trainingSet.input[i],
                                           self.trainingSet.label[i])
+                if (i % self.batch_size == 0) or (i == n_inputs - 1):
+                    learningRate = np.divide(self.learningRate,
+                                             self.annealingRate * (self.epochs + 1)) \
+                        if self.annealing else self.learningRate
+                    for layer in reversed(self.layers):
+                        layer.updateWeights(learningRate)
 
             epoch += 1
 
@@ -208,12 +216,9 @@ class LogisticRegression(Classifier):
                               accuracy_validationSet, accuracy_trainingSet, error_progresion,
                               legend_exists)
 
-    def _tune_net_parameters(self, d, input, input_label):
+    def _update_net_gradient(self, d, input, input_label):
         y = self.fire(input)
         if not np.array_equal(y, input_label):  # skip correctly classified inputs
-            learningRate = np.divide(self.learningRate,
-                                     self.annealingRate * self.epochs + 2) \
-                if self.annealing else self.learningRate
             if self.erString == 'crossentropy' and self.layers[-1].activationString == 'softmax':
                 dE_dx = self.erf.calculateErrorPrime(d, np.array(y))
                 newDerivatives, oldWeights = (dE_dx, None)
@@ -224,7 +229,7 @@ class LogisticRegression(Classifier):
                 raise ValueError("Illegal activation&error-function combination!")
             for layer in reversed(self.layers):
                 newDerivatives, oldWeights = layer.computeDerivative(
-                    newDerivatives, oldWeights, learningRate)
+                    newDerivatives, oldWeights)
 
     def classify(self, testInstance):
         """Classify a single instance.

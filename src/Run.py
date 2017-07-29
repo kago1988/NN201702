@@ -36,7 +36,8 @@ def main():
                                                         regularization_rate=0,
                                                         epochs=150,
                                                         error='crossentropy',
-                                                        network_representation=[20])
+                                                        network_representation=[20],
+                                                        batch_size=40)
 
     # Train the classifiers
     print("=========================")

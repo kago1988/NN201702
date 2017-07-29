@@ -46,7 +46,7 @@ class LogisticLayer:
 
     def __init__(self, nIn, nOut, weights=None,
                  activation='softmax', isClassifierLayer=True,
-                 learningRate=0.01, momentumRate=0.005, regularization_rate=0.5):
+                 momentumRate=0.005, regularization_rate=0.5):
 
         # Get activation function from string
         # Notice the functional programming paradigms of Python + Numpy
@@ -64,7 +64,7 @@ class LogisticLayer:
         self.output = np.ndarray((nOut, 1))
 
         # weight update terms
-        self.gradient_matrix = []                          # gradient
+        self.gradient_matrix = np.zeros((nOut, nIn + 1))   # gradient
         self.momentum_matrix = np.zeros((nOut, nIn + 1))   # momentum
 
         # learning rate, momentum influence and regularization influence
@@ -90,9 +90,6 @@ class LogisticLayer:
         # Some handy properties of the layers
         self.size = self.nOut
         self.shape = self.weights.shape
-
-        # TODO: 1. Momentum
-        # TODO: 2. Skip well classified training examples
 
     def forward(self, layerInput):
         """
@@ -124,7 +121,7 @@ class LogisticLayer:
         return self.output
 
     # here's where the magic happens ^^
-    def computeDerivative(self, nextDerivatives, nextWeights, learningRate):
+    def computeDerivative(self, nextDerivatives, nextWeights):
         """
         Compute the derivatives (backward pass) as follows:
         1.) First we calculate the propagated output error:
@@ -158,7 +155,6 @@ class LogisticLayer:
         ndarray :
             a numpy array containing the partial derivatives on this layer
         """
-        self.gradient_matrix = []
         newDerivatives = []
         oldWeights = []
         for i in range(0, self.nOut):
@@ -176,19 +172,22 @@ class LogisticLayer:
             newDerivatives.append(dE_dx_i)
             oldWeights.append(self.weights[i])
             # 3.) add derivatives with respect to weights
-            self.gradient_matrix.append(dE_dx_i * self.input)
-        # update weights
-        self.updateWeights(learningRate)
+            temp = dE_dx_i * self.input
+            self.gradient_matrix[i] += temp
         return np.array(newDerivatives), np.array(oldWeights)
 
     def updateWeights(self, learningRate):
         """
-        Update the weights of the layer
+        Update the weights of the layer.
+
+        We call this method from outside the layer, so that we can decide if we do sgd, or
+        batch/minibatch update.
         """
         for i in range(0, self.nOut):
             # L2 regularization
             regularizetion_contribution = (self.regularizationRate) * 2 * self.weights[i]
             weight_gradient_contribution = (-learningRate) * (self.gradient_matrix[i] + regularizetion_contribution)
+            self.gradient_matrix[i] = np.zeros((self.nIn + 1,)) # so that the gradient does not continue to be updated indefinitely!!
             # momentum
             momentum_contribution = self.momentumRate * self.momentum_matrix[i]
             self.momentum_matrix[i] = weight_gradient_contribution

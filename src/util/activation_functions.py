@@ -74,7 +74,12 @@ class Activation:
             sum += el
         for i in range(0, len(exp_preactivation)):
             class_probability = np.divide(exp_preactivation[i], sum)
-            model_conditional_class_distribution.append(class_probability)
+            if np.isnan(class_probability):
+                # print("preactivation values: " + str(preactivation_values) +
+                #       "\ncurrent softmax numerator: " + str(exp_preactivation[i]))
+                model_conditional_class_distribution.append(0)
+            else:
+                model_conditional_class_distribution.append(class_probability)
         return model_conditional_class_distribution
 
     @staticmethod

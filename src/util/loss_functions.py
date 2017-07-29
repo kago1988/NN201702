@@ -171,6 +171,8 @@ class CrossEntropyError(Error):
         error = 0
         for i in range(0, len(desired_output)):     # assumes one-hot encoding of the class labels!
             class_component = np.dot(desired_output[i], model_output[i])
+            if class_component == 0:
+                return np.finfo(dtype=float).min
             log_likelyhood = np.log(class_component)
             error -= log_likelyhood
         return error
