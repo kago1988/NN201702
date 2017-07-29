@@ -18,14 +18,11 @@ class Activation:
     @staticmethod
     def sigmoid(netOutput):
         sig = np.divide(1.0, (1.0 + np.exp(-netOutput)))
-        if np.isnan(sig):
-            error_string = 'sigmoid spat a nan because the net output is ' + str(netOutput)
-            raise ValueError(error_string)
-        if sig == 1:
-            print("sigmoid spat a 1, which should not have happened, "
-                  "because we foolishly trusted the numpy exp and divide implementations... "
-                  "\nThe net output was " + str(netOutput) +
-                  "\nThe exp function result was " + str(np.exp(-netOutput)))
+        # if sig == 1: # this happens a lot!
+        #    print("sigmoid spat a 1, which should not have happened, "
+        #          "because we foolishly trusted the numpy exp and divide implementations... "
+        #          "\nThe net output was " + str(netOutput) +
+        #          "\nThe exp function result was " + str(np.exp(-netOutput)))
         return sig
 
     @staticmethod

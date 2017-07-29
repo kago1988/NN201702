@@ -36,7 +36,7 @@ class LogisticLayer:
         the name of the activation function
     isClassifierLayer: bool
         to do classification or regression
-    delta : ndarray
+    gradient_matrix : ndarray
         partial derivatives
     size : positive int
         number of units in the current layer
@@ -45,11 +45,11 @@ class LogisticLayer:
     """
 
     def __init__(self, nIn, nOut, weights=None,
-                 activation='softmax', isClassifierLayer=True, learningRate=0.01):
+                 activation='softmax', isClassifierLayer=True,
+                 learningRate=0.01, momentumRate=0.005, regularization_rate=0.5):
 
         # Get activation function from string
         # Notice the functional programming paradigms of Python + Numpy
-        self.learningRate = learningRate
         self.activationString = activation
         self.activation = Activation.getActivation(self.activationString)
         if not isClassifierLayer:
@@ -62,12 +62,27 @@ class LogisticLayer:
         self.input = np.ndarray((nIn+1, 1))
         self.input[0] = 1
         self.output = np.ndarray((nOut, 1))
-        self.delta = []
+
+        # weight update terms
+        self.gradient_matrix = []                          # gradient
+        self.momentum_matrix = np.zeros((nOut, nIn + 1))   # momentum
+
+        # learning rate, momentum influence and regularization influence
+        self.learningRate = learningRate
+        self.momentumRate = momentumRate
+        self.regularizationRate = regularization_rate
+
 
         # You can have better initialization here
+        uniform_sample_margin = np.divide(np.sqrt(6), np.sqrt(nOut + nIn))
         if weights is None:
             rns = np.random.RandomState(int(time.time()))
-            self.weights = rns.uniform(size=(nOut, nIn + 1)) * 3 - 6
+            # glorot & bengio 2010 suggest setting up the weights depending on
+            # number of neurons in the current layer and in the one below.
+            self.weights = rns.uniform(size=(nOut, nIn + 1)) \
+                           * uniform_sample_margin - 2 * uniform_sample_margin
+            # set bias to 0, initially
+            self.weights[0] = 0
         else:
             self.weights = weights
 
@@ -76,6 +91,9 @@ class LogisticLayer:
         # Some handy properties of the layers
         self.size = self.nOut
         self.shape = self.weights.shape
+
+        # TODO: 1. Momentum
+        # TODO: 2. Skip well classified training examples
 
     def forward(self, layerInput):
         """
@@ -141,7 +159,7 @@ class LogisticLayer:
         ndarray :
             a numpy array containing the partial derivatives on this layer
         """
-        self.delta = []
+        self.gradient_matrix = []
         newDerivatives = []
         oldWeights = []
         for i in range(0, self.nOut):
@@ -159,7 +177,7 @@ class LogisticLayer:
             newDerivatives.append(dE_dx_i)
             oldWeights.append(self.weights[i])
             # 3.) add derivatives with respect to weights
-            self.delta.append(np.dot(dE_dx_i, self.input))
+            self.gradient_matrix.append(dE_dx_i * self.input)
         # update weights
         self.updateWeights()
         return np.array(newDerivatives), np.array(oldWeights)
@@ -169,10 +187,15 @@ class LogisticLayer:
         Update the weights of the layer
         """
         for i in range(0, self.nOut):
-            update_value = self.learningRate * self.delta[i]
-            if np.isnan(update_value).any():
+            # L2 regularization
+            regularizetion_contribution = (self.regularizationRate) * 2 * self.weights[i]
+            weight_gradient_contribution = (-self.learningRate) * (self.gradient_matrix[i] + regularizetion_contribution)
+            # momentum
+            momentum_contribution = self.momentumRate * self.momentum_matrix[i]
+            self.momentum_matrix[i] = weight_gradient_contribution
+            if np.isnan(weight_gradient_contribution).any():
                 raise ValueError("Through the roof! The update value for the "
-                                 "layer weights just exploded... " + str(self.delta) +
+                                 "layer weights just exploded... " + str(self.gradient_matrix) +
                                  " does not bode well with a learning rate of " + str(self.learningRate))
-            self.weights[i] -= update_value
+            self.weights[i] += weight_gradient_contribution + momentum_contribution
 

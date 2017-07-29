@@ -47,7 +47,7 @@ class LogisticRegression(Classifier):
     """
 
     def __init__(self, train, valid, test,
-                 learningRate=0.01, epochs=50,
+                 learningRate=0.01, momentum=0.005, regularization_rate=0.5, epochs=50,
                  error='mse',
                  network_representation=None):
         """
@@ -86,9 +86,9 @@ class LogisticRegression(Classifier):
         self.erString = error
         # architecture initialization
         self._initialize_error(error)
-        self._initialize_network(network_representation)
+        self._initialize_network(network_representation, momentum, regularization_rate)
 
-    def _initialize_network(self, network_representation):
+    def _initialize_network(self, network_representation, momentum, regularization_rate):
         """
         Initializes the network in accordance with the parameters specified in
         network_representation.
@@ -119,7 +119,9 @@ class LogisticRegression(Classifier):
                                       activation="sigmoid",
                                       weights=None,
                                       learningRate=self.learningRate,
-                                      isClassifierLayer=False)
+                                      isClassifierLayer=False,
+                                      regularization_rate=regularization_rate,
+                                      momentumRate=momentum)
                 nIn = network_representation[i]
             else:   # mark the output layer as the classifier layer
                 nOut = self.trainingSet.label.shape[1]
@@ -127,7 +129,9 @@ class LogisticRegression(Classifier):
                                       nOut=nOut,
                                       activation="softmax",
                                       weights=None,
-                                      learningRate=self.learningRate)
+                                      learningRate=self.learningRate,
+                                      regularization_rate=regularization_rate,
+                                      momentumRate=momentum)
             self.layers.append(layer)
 
 
@@ -190,7 +194,7 @@ class LogisticRegression(Classifier):
         y = self.fire(input)
 
         if self.erString == 'crossentropy' and self.layers[-1].activationString == 'softmax':
-            dE_dx = self.erf.calculateErrorPrime(d, np.array(y[0]))
+            dE_dx = self.erf.calculateErrorPrime(d, np.array(y))
             newDerivatives, oldWeights = (dE_dx, None)
         elif self.layers[-1].activationString == 'sigmoid':
             dE_dy = self.erf.calculateErrorPrime(d, np.array(y[0]))
@@ -217,9 +221,9 @@ class LogisticRegression(Classifier):
         index = np.argmax(result)
         for i in range(0, len(result)):
             if i == index:
-                result[i] = 1
+                result[i] = 1.
             else:
-                result[i] = 0
+                result[i] = 0.
         return result
 
 
@@ -240,7 +244,7 @@ class LogisticRegression(Classifier):
             test = self.testSet.input
         # Once you can classify an instance, just use map for all of the test
         # set.
-        return list(map(self.classify, test))
+        return np.array(map(self.classify, test))
 
     def fire(self, network_input):
         """
@@ -280,6 +284,8 @@ class LogisticRegression(Classifier):
 
         :return: Returns True to indicate the legend has been added.
         """
+        if iteration == self.epochs - 1:
+            pl.savefig("experiment_results.png")
         x = range(iteration)
         pl.xlabel(u"Epochs")
         pl.figure(1)
