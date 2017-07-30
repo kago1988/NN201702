@@ -178,7 +178,7 @@ class CrossEntropyError(Error):
                 return np.finfo(dtype=float).min
             log_likelyhood = np.log(class_component)
             error -= log_likelyhood
-        return error
+        return np.divide(error, len(desired_output))
 
     def calculateErrorPrime(self, desired_output, model_output):
         """

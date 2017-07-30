@@ -12,17 +12,15 @@ def main():
     data = MNISTSeven("../data/mnist_seven.csv", 3000, 1000, 1000
                       , oneHot=True, targetDigit="-1")
 
-    # use learningRate=0.00005 for sse if you want to see some change,
-    # otherwise the batch method learnes too fast (no change after the first step)
     myLogisticRegressionClassifier = FFNN(data.trainingSet,
                                           learningRate=2.,
                                           annealingRate=0.5,
                                           momentum=1,
-                                          regularization_rate=0.01,
-                                          epochs=50,
+                                          regularization_rate=0.05,
+                                          epochs=150,
                                           error='crossentropy',
-                                          network_representation=[20],
-                                          batch_size=50,
+                                          network_representation=[15],
+                                          batch_size=100,
                                           verbose=True)
 
     # Train the classifiers
