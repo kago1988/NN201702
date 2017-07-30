@@ -35,11 +35,11 @@ class DataSet(object):
 
         # Transform all labels which is not the targetDigit to False,
         # The label of targetDigit will be True,
-        if oneHot and targetDigit != -1:
+        if oneHot and targetDigit != "-1":
             self.label = list(map(lambda a: 1
                             if str(a) == targetDigit else 0,
                             self.label))
-        elif oneHot and targetDigit == -1:
+        elif oneHot and targetDigit == "-1":
             a = list(map(lambda a: int(a), self.label))
             b = np.zeros((len(a), 10))
             b[np.arange(len(a)), np.array(a)] = 1

@@ -36,11 +36,11 @@ class MNISTSeven(object):
     # dataPath = "data/mnist_seven.csv"
 
     def __init__(self, dataPath,
-                        numTrain=3000,
-                        numValid=1000,
-                        numTest=1000,
-                        oneHot=True,
-                        targetDigit='7'):
+                 numTrain=3000,
+                 numValid=1000,
+                 numTest=1000,
+                 oneHot=True,
+                 targetDigit='7'):
 
         self.trainingSet = []
         self.validationSet = []

@@ -164,6 +164,9 @@ class CrossEntropyError(Error):
 
         see: https://stats.stackexchange.com/questions/79454/softmax-layer-in-a-neural-network/92309#92309
 
+        see: https://datascience.stackexchange.com/questions/9302/the-cross-entropy-error-function-in-neural-networks
+        for an explanation as to why cross-entropy for multiclass is not sum_i d_i ln(t_i) + (1 - d_i) ln (1 - t_i)
+
         :param desired_output: The label distribution for this input.
         :param model_output: The label distribution predicted by the model.
         :return: The cross-entropy error.
