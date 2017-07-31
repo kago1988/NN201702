@@ -56,8 +56,8 @@ class FFNN(Classifier):
     """
 
     def __init__(self, train,
-                 learningRate=0.01, momentum=0.005, regularization_rate=0.5, annealingRate=0.5,
-                 epochs=50, error='mse', batch_size=1, network_representation=None, verbose=True):
+                 learningRate=0.01, momentum=0.005, regularization_rate=0.5, annealingRate=0.5, epochs=50,
+                 error='mse', batch_size=1, network_representation=None, verbose=True, normalized=False):
         """
         Class constructor. Initializes the fully connected feed forward neural network
         """
@@ -74,8 +74,6 @@ class FFNN(Classifier):
         self.erf = self._initialize_error(error)
         self.layers = self._initialize_network(network_representation, momentum, regularization_rate,
                                                train.input.shape[1], train.label.shape[1])
-        # string describing the current configuration of hyper-parameters
-        self.model_descriptor = self._set_descriptor_string(network_representation)
         # for remembering the layer configuration yielding the best results
         self.best_validation_set_accuracy = 0
         self.best_model = None
@@ -86,6 +84,14 @@ class FFNN(Classifier):
         self.current_training_accuracy = -1
         self.current_validation_accuracy = -1
         self.verbose = verbose
+        # data normalization parameters
+        self.normalized = normalized
+        if normalized:
+            self.ts_mean = np.array(train.input).mean(axis=0)
+            v = np.array(train.input).var(axis=0)
+            self.ts_variance = np.array(list(map(lambda x: x if x != 0 else 1, v)))
+        # string describing the current configuration of hyper-parameters
+        self.model_descriptor = self._set_descriptor_string(network_representation)
 
     def _set_descriptor_string(self, network_representation):
         """
@@ -95,12 +101,13 @@ class FFNN(Classifier):
         :return: The descriptor string.
         """
         annealing_str = str(self.annealingRate) + "annealed" if self.annealingRate != -1 else ""
+        norm = "_0m1vNormalized" if self.normalized else ""
         return "ffnn_" + str(network_representation) + "nodes_" \
                + str(self.epochs) + "epochs_" \
                + str(self.learningRate) + "lr_" \
                + str(self.momentum) + "m_" + annealing_str + "_" \
                + str(self.batch_size) + "batchSize" + str(self.regularization) \
-               + "L2Regularized"
+               + "L2Regularized" + norm
 
     @staticmethod
     def _initialize_network(network_representation, momentum, regularization_rate, nInInput, nOutOutput):
@@ -173,6 +180,7 @@ class FFNN(Classifier):
             # update the control variables and output information
             self._update_and_display_control_parameters(pl, epoch, trainingSet, validationSet)
             if self.best_validation_set_accuracy < self.current_validation_accuracy:
+                self.best_validation_set_accuracy = self.current_validation_accuracy
                 self.best_model = cp.deepcopy(self.layers)
             # stop condition
             if self.current_training_error == 0 or epoch >= self.epochs:
@@ -187,6 +195,10 @@ class FFNN(Classifier):
             if self.annealingRate != -1 else self.learningRate
         for layer in reversed(self.layers):
             layer.updateWeights(learningRate)
+
+    def _normalize(self, network_input):
+        interim = (network_input - self.ts_mean) / self.ts_variance
+        return np.array(list(map(lambda x: 0 if np.isnan(x) else x, interim)))
 
     def _update_and_display_control_parameters(self, pl, epoch, trainingSet, validationSet):
         """
@@ -280,7 +292,7 @@ class FFNN(Classifier):
         :param network_input: The network input.
         :return: The network output.
         """
-        layer_input = network_input
+        layer_input = self._normalize(network_input) if self.normalized else network_input
         layer_output = None
         for layer in self.layers:
             layer_output = layer.forward(layer_input)
