@@ -8,21 +8,23 @@ from sklearn.metrics import accuracy_score
 
 import cloudpickle as pk
 
+
 def main():
-    data = MNISTSeven("../data/mnist_train.csv", 10000, 2000, 2000
+    # mnist_seven has 5000 data-points: use for development and debugging
+    # mnist_train has 60000 data-points: use for training
+    data = MNISTSeven("../data/mnist_seven.csv", 3000, 1000, 1000
                       , oneHot=True, targetDigit="-1")
 
     myLogisticRegressionClassifier = FFNN(data.trainingSet,
-                                          learningRate=2.,
-                                          annealingRate=0.5,
+                                          learningRate=0.05,
                                           momentum=1,
                                           regularization_rate=0.03,
-                                          epochs=500,
+                                          epochs=50,
                                           error='crossentropy',
                                           network_representation=[15],
                                           batch_size=100,
                                           verbose=True,
-                                          normalized=False)
+                                          normalized=True)
 
     # Train the classifiers
     print("=========================")

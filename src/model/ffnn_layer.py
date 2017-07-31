@@ -47,7 +47,6 @@ class FFNNLayer:
     def __init__(self, nIn, nOut, weights=None,
                  activation='softmax', isClassifierLayer=True,
                  momentumRate=0.005, regularization_rate=0.5):
-
         # Get activation function from string
         # Notice the functional programming paradigms of Python + Numpy
         self.activationString = activation
@@ -70,6 +69,7 @@ class FFNNLayer:
         # learning rate, momentum influence and regularization influence
         self.momentumRate = momentumRate
         self.regularizationRate = regularization_rate
+        self.gradient_sum_sqared_over_time = np.zeros((nOut, nIn + 1))
 
 
         # You can have better initialization here
@@ -185,8 +185,10 @@ class FFNNLayer:
         """
         for i in range(0, self.nOut):
             # L2 regularization
+            self.gradient_sum_sqared_over_time[i] += np.power(self.gradient_matrix[i], 2)
             regularizetion_contribution = (self.regularizationRate) * 2 * self.weights[i]
-            weight_gradient_contribution = (-learningRate) * (self.gradient_matrix[i] + regularizetion_contribution)
+            lr = np.divide(learningRate, np.sqrt(self.gradient_sum_sqared_over_time[i] + 1))
+            weight_gradient_contribution = (-lr) * (self.gradient_matrix[i] + regularizetion_contribution)
             self.gradient_matrix[i] = np.zeros((self.nIn + 1,)) # so that the gradient does not continue to be updated indefinitely!!
             # momentum
             momentum_contribution = self.momentumRate * self.momentum_matrix[i]

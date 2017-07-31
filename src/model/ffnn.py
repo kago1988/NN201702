@@ -1,17 +1,16 @@
 # -*- coding: utf-8 -*-
 
-import sys
+import copy as cp
 import logging
+import sys
 
 import numpy as np
-import copy as cp
-import util.loss_functions as erf
-
-from util.plotter import Plotter
-from model.classifier import Classifier
-from model.ffnn_layer import FFNNLayer
 from sklearn.metrics import accuracy_score
 
+import util.loss_functions as erf
+from model.classifier import Classifier
+from model.ffnn_layer import FFNNLayer
+from report.plotter import Plotter
 
 logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s',
                     level=logging.DEBUG,
@@ -47,7 +46,6 @@ class FFNN(Classifier):
     learning_rate : the factor of the gradient update
     momentum : influence of the previous iteration's gradient on the current update
     regularization : factor of the L2 regularization term
-    annealingRate : adjusts the learning rate dependent on the epoch; -1 fo no annealing
     erf : the error function; currently, just crossentropy is supported
     network_representation : list of integers descibing the number of units in non-
         output layers
@@ -56,13 +54,12 @@ class FFNN(Classifier):
     """
 
     def __init__(self, train,
-                 learningRate=0.01, momentum=0.005, regularization_rate=0.5, annealingRate=0.5, epochs=50,
-                 error='mse', batch_size=1, network_representation=None, verbose=True, normalized=False):
+                 learningRate=0.01, momentum=0.005, regularization_rate=0.5, epochs=50, error='mse',
+                 batch_size=1, network_representation=None, verbose=True, normalized=False):
         """
         Class constructor. Initializes the fully connected feed forward neural network
         """
         # hyperparameters
-        self.annealingRate = annealingRate
         self.learningRate = learningRate
         self.epochs = epochs
         self.momentum = momentum
@@ -87,11 +84,32 @@ class FFNN(Classifier):
         # data normalization parameters
         self.normalized = normalized
         if normalized:
-            self.ts_mean = np.array(train.input).mean(axis=0)
-            v = np.array(train.input).var(axis=0)
-            self.ts_variance = np.array(list(map(lambda x: x if x != 0 else 1, v)))
+            self.ts_mean, self.ts_variance = self._get_normalization_statistics(train.input)
         # string describing the current configuration of hyper-parameters
         self.model_descriptor = self._set_descriptor_string(network_representation)
+
+    @staticmethod
+    def _get_normalization_statistics(training_set_input):
+        """
+        Computes the mean and variance of the training set for normalization.
+
+        'Reasoning: A model shall be applied on unseen data which is in general not
+        available at the time the model is built. The validation process (including
+        data splitting) simulates this. So in order to get a good estimate of the
+        model quality (and generalization power) one needs to restrict the calculation
+        of the normalization parameters (mean and variance) to the training set.',
+        source:
+        https://stats.stackexchange.com/questions/77350/perform-feature-normalization-before-or-within-model-validation
+
+        :param training_set_input: The training set data.
+        :return: The mean and variance.
+        """
+        mean = np.array(training_set_input).mean(axis=0)
+        v = np.array(training_set_input).var(axis=0)
+        # some input dimensions have 0 mean and 0 variance;
+        # to prevent 0 divide error in normalization, we replace 0 in variance with the machine epsilon
+        variance = np.array(list(map(lambda x: x if x != 0 else np.finfo(float).eps, v)))
+        return mean, variance
 
     def _set_descriptor_string(self, network_representation):
         """
@@ -100,12 +118,11 @@ class FFNN(Classifier):
         :param network_representation: The list representing the network.
         :return: The descriptor string.
         """
-        annealing_str = str(self.annealingRate) + "annealed" if self.annealingRate != -1 else ""
         norm = "_0m1vNormalized" if self.normalized else ""
         return "ffnn_" + str(network_representation) + "nodes_" \
                + str(self.epochs) + "epochs_" \
                + str(self.learningRate) + "lr_" \
-               + str(self.momentum) + "m_" + annealing_str + "_" \
+               + str(self.momentum) + "m_" \
                + str(self.batch_size) + "batchSize" + str(self.regularization) \
                + "L2Regularized" + norm
 
@@ -191,10 +208,8 @@ class FFNN(Classifier):
         Calls the layer weight update methods to update their weights from the stored
         gradients, according to specified hyperparameters. An annealed learning rate is used.
         """
-        learningRate = np.divide(self.learningRate, self.annealingRate * (self.epochs + 1)) \
-            if self.annealingRate != -1 else self.learningRate
         for layer in reversed(self.layers):
-            layer.updateWeights(learningRate)
+            layer.updateWeights(self.learningRate)
 
     def _normalize(self, network_input):
         interim = (network_input - self.ts_mean) / self.ts_variance
